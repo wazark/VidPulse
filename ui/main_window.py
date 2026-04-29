@@ -1,8 +1,12 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QLineEdit,
-    QPushButton, QMessageBox, QProgressBar
+    QWidget, QHBoxLayout, QVBoxLayout,
+    QPushButton, QStackedWidget, QLabel
 )
-from ui.download_worker import DownloadWorker
+
+from ui.pages.home_page import HomePage
+from ui.pages.downloader_page import DownloaderPage
+from ui.pages.settings_page import SettingsPage
+from ui.widgets.theme_manager import ThemeManager
 
 
 class MainWindow(QWidget):
@@ -10,75 +14,48 @@ class MainWindow(QWidget):
         super().__init__()
 
         self.setWindowTitle("VidPulse")
-        self.setFixedSize(400, 250)
+        self.resize(900, 500)
 
-        layout = QVBoxLayout()
+        main_layout = QHBoxLayout()
 
-        self.label = QLabel("Cole o link do YouTube:")
-        layout.addWidget(self.label)
+        # SIDEBAR
+        sidebar = QVBoxLayout()
 
-        self.url_input = QLineEdit()
-        layout.addWidget(self.url_input)
+        logo = QLabel("🎬 VidPulse")
+        logo.setStyleSheet("font-size: 18pt; font-weight: bold; margin-bottom: 20px;")
+        sidebar.addWidget(logo)
 
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setValue(0)
-        layout.addWidget(self.progress_bar)
+        btn_home = QPushButton("🏠 Home")
+        btn_download = QPushButton("⬇️ Downloader")
+        btn_settings = QPushButton("⚙️ Configurações")
 
-        self.btn_video = QPushButton("Baixar MP4")
-        self.btn_video.clicked.connect(self.download_video)
-        layout.addWidget(self.btn_video)
+        sidebar.addWidget(btn_home)
+        sidebar.addWidget(btn_download)
+        sidebar.addStretch()
+        sidebar.addWidget(btn_settings)
 
-        self.btn_audio = QPushButton("Baixar MP3")
-        self.btn_audio.clicked.connect(self.download_audio)
-        layout.addWidget(self.btn_audio)
+        # STACK
+        self.stack = QStackedWidget()
 
-        self.setLayout(layout)
+        self.home_page = HomePage()
+        self.downloader_page = DownloaderPage()
+        self.settings_page = SettingsPage(self.change_theme)
 
-        self.worker = None
+        self.stack.addWidget(self.home_page)
+        self.stack.addWidget(self.downloader_page)
+        self.stack.addWidget(self.settings_page)
 
-    def start_download(self, mode):
-        url = self.url_input.text().strip()
+        # AÇÕES
+        btn_home.clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        btn_download.clicked.connect(lambda: self.stack.setCurrentIndex(1))
+        btn_settings.clicked.connect(lambda: self.stack.setCurrentIndex(2))
 
-        if not url:
-            self.show_error("Insere um link válido.")
-            return
+        # FINAL
+        main_layout.addLayout(sidebar, 1)
+        main_layout.addWidget(self.stack, 4)
 
-        self.btn_video.setEnabled(False)
-        self.btn_audio.setEnabled(False)
-        self.progress_bar.setValue(0)
+        self.setLayout(main_layout)
 
-        self.worker = DownloadWorker(url, mode)
-
-        self.worker.progress.connect(self.update_progress)
-        self.worker.finished.connect(self.download_finished)
-        self.worker.error.connect(self.download_error)
-
-        self.worker.start()
-
-    def download_video(self):
-        self.start_download("video")
-
-    def download_audio(self):
-        self.start_download("audio")
-
-    def update_progress(self, value):
-        self.progress_bar.setValue(value)
-
-    def download_finished(self, message):
-        self.show_success(message)
-        self.reset_ui()
-
-    def download_error(self, message):
-        self.show_error(message)
-        self.reset_ui()
-
-    def reset_ui(self):
-        self.btn_video.setEnabled(True)
-        self.btn_audio.setEnabled(True)
-        self.progress_bar.setValue(0)
-
-    def show_error(self, message):
-        QMessageBox.critical(self, "Erro", message)
-
-    def show_success(self, message):
-        QMessageBox.information(self, "Sucesso", message)
+    def change_theme(self, theme):
+        from PySide6.QtWidgets import QApplication
+        ThemeManager.load_theme(QApplication.instance(), theme)
