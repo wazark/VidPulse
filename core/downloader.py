@@ -15,20 +15,15 @@ def get_ffmpeg_path():
 
 class Downloader:
 
-    # -----------------------------
-    # MÉTODO PARA OBTER COOKIES (SE EXISTIR)
-    # -----------------------------
     @staticmethod
     def get_cookie_file():
-        """Retorna o caminho do arquivo de cookies se existir"""
+        """Retorna o caminho do arquivo de cookies se existir."""
         if hasattr(sys, '_MEIPASS'):
             base_path = sys._MEIPASS
         else:
             base_path = os.path.dirname(os.path.dirname(__file__))
 
         cookie_path = os.path.join(base_path, "cookies.txt")
-
-        # Também verifica no diretório do usuário
         user_cookie_path = os.path.join(os.path.expanduser("~"), ".vidpulse", "cookies.txt")
 
         if os.path.exists(cookie_path):
@@ -38,24 +33,22 @@ class Downloader:
         else:
             return None
 
-    # -----------------------------
-    # MÉTODO PARA OBTER EXTRACTOR_ARGS (MÚLTIPLOS PLAYERS)
-    # -----------------------------
     @staticmethod
     def get_extractor_args():
-        """Define os clients do YouTube a serem tentados (fallback automático)"""
+        """Define os clients do YouTube a serem tentados (fallback automático)."""
         return {
             'youtube': {
                 'player_client': ['default', 'web_safari', 'android', 'ios'],
-                'skip': ['webpage']  # Opcional: pode acelerar a extração
+                'skip': ['webpage']
             }
         }
 
     # -----------------------------
-    # PREVIEW + FORMATOS (COM MULTI-CLIENT)
+    # PREVIEW + FORMATOS + TAMANHO ESTIMADO
     # -----------------------------
     @staticmethod
     def get_video_info(url):
+        """Retorna informações do vídeo, incluindo tamanho estimado em MB."""
         cookie_file = Downloader.get_cookie_file()
 
         ydl_opts = {
@@ -64,7 +57,7 @@ class Downloader:
             'ffmpeg_location': get_ffmpeg_path(),
             'ignoreerrors': True,
             'extract_flat': False,
-            'extractor_args': Downloader.get_extractor_args(),  # 🔥 SOLUÇÃO ALTERNATIVA
+            'extractor_args': Downloader.get_extractor_args(),
         }
 
         if cookie_file:
@@ -81,8 +74,13 @@ class Downloader:
 
                 qualities = set()
                 format_map = {}
+                best_filesize = None
 
                 for f in formats:
+                    # Captura tamanho do melhor formato (vídeo+áudio combinados)
+                    if f.get("filesize") and (best_filesize is None or f["filesize"] > best_filesize):
+                        best_filesize = f["filesize"]
+
                     if f.get("height"):
                         quality = f"{f['height']}p"
                         qualities.add(quality)
@@ -93,11 +91,14 @@ class Downloader:
                                 "tbr": f.get("tbr", 0)
                             }
 
-                qualities = sorted(
-                    qualities,
-                    key=lambda x: int(x.replace("p", "")),
-                    reverse=True
-                )
+                qualities = sorted(qualities, key=lambda x: int(x.replace("p", "")), reverse=True)
+
+                # Se não encontrou filesize, tenta estimar via tamanho dos requests
+                if best_filesize is None and info.get("filesize"):
+                    best_filesize = info["filesize"]
+
+                # Converte bytes para MB (arredondado)
+                size_mb = round(best_filesize / (1024 * 1024), 1) if best_filesize else None
 
                 return {
                     "title": info.get("title", "Título desconhecido"),
@@ -105,14 +106,13 @@ class Downloader:
                     "duration": info.get("duration", 0),
                     "thumbnail": info.get("thumbnail"),
                     "qualities": qualities,
-                    "format_map": format_map
+                    "format_map": format_map,
+                    "filesize_mb": size_mb,          # 🔥 NOVO: tamanho estimado
                 }
         except Exception as e:
             error_msg = str(e)
-
             if "This video is not available" in error_msg:
-                raise Exception(
-                    "Este vídeo não está disponível (pode ser restrito por região ou exigir login). Tente usar um arquivo de cookies.")
+                raise Exception("Este vídeo não está disponível (pode ser restrito por região ou exigir login). Tente usar um arquivo de cookies.")
             elif "Private video" in error_msg:
                 raise Exception("Este vídeo é privado e não pode ser acessado.")
             elif "age" in error_msg.lower():
@@ -131,10 +131,8 @@ class Downloader:
             path = output_path
 
         os.makedirs(path, exist_ok=True)
-
         cookie_file = Downloader.get_cookie_file()
 
-        # Configuração base com qualidade
         if quality:
             height = int(quality.replace("p", ""))
             format_str = f"bestvideo[ext=mp4][height<={height}]+bestaudio[ext=m4a]/bestvideo[ext=mp4][height<={height}]+bestaudio/best[ext=mp4]"
@@ -152,7 +150,7 @@ class Downloader:
             'fixup': 'detect_or_warn',
             'ignoreerrors': True,
             'extract_flat': False,
-            'extractor_args': Downloader.get_extractor_args(),  # 🔥 SOLUÇÃO ALTERNATIVA
+            'extractor_args': Downloader.get_extractor_args(),
         }
 
         if cookie_file:
@@ -163,8 +161,6 @@ class Downloader:
                 ydl.download([url])
         except Exception as e:
             error_msg = str(e)
-
-            # Fallback para formato simples se falhar
             if "not available" in error_msg.lower() or "requested format" in error_msg.lower():
                 if progress_hook:
                     progress_hook({'status': 'downloading', '_percent_str': '0%'})
@@ -177,9 +173,8 @@ class Downloader:
                     'progress_hooks': [progress_hook] if progress_hook else [],
                     'ffmpeg_location': get_ffmpeg_path(),
                     'ignoreerrors': True,
-                    'extractor_args': Downloader.get_extractor_args(),  # também no fallback
+                    'extractor_args': Downloader.get_extractor_args(),
                 }
-
                 if cookie_file:
                     fallback_opts['cookiefile'] = cookie_file
 
@@ -189,7 +184,7 @@ class Downloader:
                 raise e
 
     # -----------------------------
-    # DOWNLOAD AUDIO (COM MULTI-CLIENT)
+    # DOWNLOAD AUDIO
     # -----------------------------
     @staticmethod
     def download_audio(url, progress_hook=None, output_path=None):
@@ -199,7 +194,6 @@ class Downloader:
             path = output_path
 
         os.makedirs(path, exist_ok=True)
-
         cookie_file = Downloader.get_cookie_file()
 
         ydl_opts = {
@@ -213,7 +207,7 @@ class Downloader:
                 'preferredquality': '192',
             }],
             'ignoreerrors': True,
-            'extractor_args': Downloader.get_extractor_args(),  # 🔥 SOLUÇÃO ALTERNATIVA
+            'extractor_args': Downloader.get_extractor_args(),
         }
 
         if cookie_file:

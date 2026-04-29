@@ -8,8 +8,10 @@ from PySide6.QtGui import QPixmap
 
 from ui.download_worker import DownloadWorker
 from core.downloader import Downloader
+from core.config import Config  # 🔥 Para carregar pasta padrão
 
 import requests
+import os
 
 
 class DownloaderPage(QWidget):
@@ -33,9 +35,10 @@ class DownloaderPage(QWidget):
         self.preview_btn = QPushButton("🔍 Validar vídeo")
         self.preview_btn.clicked.connect(self.load_preview)
 
-        # Info labels
+        # Info labels (agora com tamanho)
         self.video_info_label = QLabel("")
         self.video_info_label.setStyleSheet("color: #7A7E8F; font-size: 10pt;")
+        self.video_info_label.setWordWrap(True)
 
         self.thumbnail_label = QLabel()
         self.thumbnail_label.setFixedHeight(180)
@@ -90,8 +93,11 @@ class DownloaderPage(QWidget):
         self.setLayout(main_layout)
         self.update_button_styles()
 
+        # 🔥 Carrega pasta padrão salva nas configurações
+        self.load_default_folder()
+
     # -----------------------------
-    # PREVIEW
+    # PREVIEW (agora com tamanho)
     # -----------------------------
     def load_preview(self):
         url = self.url_input.text().strip()
@@ -108,8 +114,13 @@ class DownloaderPage(QWidget):
             hours = minutes // 60 if minutes >= 60 else 0
             duration_text = f"{hours}h {minutes % 60}min" if hours > 0 else f"{minutes} min"
 
+            # Monta texto com tamanho se disponível
+            size_text = f"💾 {info['filesize_mb']} MB" if info.get("filesize_mb") else "💾 Tamanho não disponível"
+
             self.video_info_label.setText(
-                f"🎬 {info['title']}\n👤 {info['uploader']}\n⏱ {duration_text}"
+                f"🎬 {info['title']}\n"
+                f"👤 {info['uploader']}\n"
+                f"⏱ {duration_text}  |  {size_text}"
             )
 
             if info.get("thumbnail"):
@@ -143,14 +154,12 @@ class DownloaderPage(QWidget):
             self.quality_box.setCurrentText("Auto")
 
     def update_button_styles(self):
-        """Define estilos dos botões MP4/MP3 baseado no tema atual (Dark/Light)"""
+        """Define estilos dos botões MP4/MP3 baseado no tema atual (Dark/Light)."""
         app = QApplication.instance()
-        # Detecta se o tema é escuro baseado na luminosidade da cor de fundo padrão
         bg_color = app.palette().window().color()
         is_dark = bg_color.lightness() < 128
 
         if self.mode == "video":
-            # Botão Video (ativo)
             self.btn_video.setStyleSheet("""
                 background-color: #00C853;
                 color: black;
@@ -159,7 +168,6 @@ class DownloaderPage(QWidget):
                 border-radius: 8px;
                 padding: 10px;
             """)
-            # Botão Audio (inativo)
             if is_dark:
                 self.btn_audio.setStyleSheet("""
                     background-color: #2A2F3A;
@@ -177,7 +185,6 @@ class DownloaderPage(QWidget):
                     padding: 10px;
                 """)
         else:
-            # Botão Audio (ativo)
             self.btn_audio.setStyleSheet("""
                 background-color: #00C853;
                 color: black;
@@ -186,7 +193,6 @@ class DownloaderPage(QWidget):
                 border-radius: 8px;
                 padding: 10px;
             """)
-            # Botão Video (inativo)
             if is_dark:
                 self.btn_video.setStyleSheet("""
                     background-color: #2A2F3A;
@@ -205,12 +211,25 @@ class DownloaderPage(QWidget):
                 """)
 
     def refresh_theme(self):
-        """Chamado quando o tema é alterado para reaplicar os estilos dos botões"""
         self.update_button_styles()
 
     # -----------------------------
-    # PASTA
+    # PASTA (com persistência)
     # -----------------------------
+    def load_default_folder(self):
+        """Carrega a pasta padrão das configurações (vídeo ou áudio)."""
+        if self.mode == "video":
+            default_path = Config.get_default_video_folder()
+        else:
+            default_path = Config.get_default_audio_folder()
+
+        if os.path.exists(default_path):
+            self.folder_path = default_path
+            self.path_display.setText(f"📁 Pasta padrão: {default_path}")
+        else:
+            self.folder_path = None
+            self.path_display.setText("")
+
     def select_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Escolher pasta de destino")
         if folder:
