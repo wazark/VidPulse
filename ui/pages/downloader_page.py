@@ -69,8 +69,19 @@ class DownloaderPage(QWidget):
         path_layout.addWidget(self.path_btn)
         path_layout.addWidget(self.path_display)
 
-        # Progresso
+        # Progresso + ETA + Cancelar
+        progress_layout = QHBoxLayout()
         self.progress = QProgressBar()
+        self.progress.setFormat("%p%")
+        self.eta_label = QLabel("")
+        self.eta_label.setStyleSheet("color: #7A7E8F; font-size: 9pt;")
+        self.eta_label.setMinimumWidth(80)
+        self.cancel_btn = QPushButton("⏹️ Cancelar")
+        self.cancel_btn.setEnabled(False)
+        self.cancel_btn.clicked.connect(self.cancel_download)
+        progress_layout.addWidget(self.progress, 4)
+        progress_layout.addWidget(self.eta_label)
+        progress_layout.addWidget(self.cancel_btn)
 
         # Download
         self.download_btn = QPushButton("⬇️ Iniciar Download")
@@ -84,7 +95,7 @@ class DownloaderPage(QWidget):
         main_layout.addLayout(format_layout)
         main_layout.addLayout(quality_layout)
         main_layout.addLayout(path_layout)
-        main_layout.addWidget(self.progress)
+        main_layout.addLayout(progress_layout)
         main_layout.addWidget(self.download_btn)
 
         self.setLayout(main_layout)
@@ -238,8 +249,12 @@ class DownloaderPage(QWidget):
             QMessageBox.warning(self, "Aviso", "Insira um link válido.")
             return
 
+        # Desabilita botões durante o download
         self.download_btn.setEnabled(False)
+        self.preview_btn.setEnabled(False)
+        self.cancel_btn.setEnabled(True)
         self.progress.setValue(0)
+        self.eta_label.setText("")
 
         selected_quality = self.quality_box.currentText()
         if selected_quality == "Auto":
@@ -249,13 +264,25 @@ class DownloaderPage(QWidget):
         self.worker = DownloadWorker(url, self.mode, selected_quality, output_path)
 
         self.worker.progress.connect(self.progress.setValue)
+        self.worker.eta.connect(self.eta_label.setText)
         self.worker.finished.connect(self.on_download_finished)
         self.worker.error.connect(self.on_download_error)
 
         self.worker.start()
 
-    # ---------- NOVO MÉTODO COM BOTÃO ABRIR PASTA ----------
+    def cancel_download(self):
+        """Cancela o download em andamento."""
+        if self.worker and self.worker.isRunning():
+            self.worker.cancel()
+            self.cancel_btn.setEnabled(False)
+            self.eta_label.setText("Cancelando...")
+
     def on_download_finished(self, message, file_path):
+        # Reabilita botões
+        self.download_btn.setEnabled(True)
+        self.preview_btn.setEnabled(True)
+        self.cancel_btn.setEnabled(False)
+
         msg_box = QMessageBox(self)
         msg_box.setWindowTitle("Download concluído")
         msg_box.setText(f"{message}\n\nFicheiro guardado em:\n{file_path}")
@@ -270,9 +297,15 @@ class DownloaderPage(QWidget):
         self.reset_ui()
 
     def on_download_error(self, error_message):
+        self.download_btn.setEnabled(True)
+        self.preview_btn.setEnabled(True)
+        self.cancel_btn.setEnabled(False)
         QMessageBox.critical(self, "❌ Erro no download", error_message)
         self.reset_ui()
 
     def reset_ui(self):
-        self.download_btn.setEnabled(True)
         self.progress.setValue(0)
+        self.eta_label.setText("")
+        self.download_btn.setEnabled(True)
+        self.preview_btn.setEnabled(True)
+        self.cancel_btn.setEnabled(False)
