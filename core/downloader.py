@@ -15,6 +15,28 @@ def get_ffmpeg_path():
 
 class Downloader:
 
+    # -----------------------------
+    # PREVIEW DO VÍDEO (NOVO)
+    # -----------------------------
+    @staticmethod
+    def get_video_info(url):
+        ydl_opts = {
+            'quiet': True,
+            'skip_download': True
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+
+            return {
+                "title": info.get("title"),
+                "uploader": info.get("uploader"),
+                "duration": info.get("duration")
+            }
+
+    # -----------------------------
+    # DOWNLOAD VIDEO
+    # -----------------------------
     @staticmethod
     def download_video(url, progress_hook=None):
         path = get_download_path("video")
@@ -25,12 +47,14 @@ class Downloader:
             'merge_output_format': 'mp4',
             'progress_hooks': [progress_hook] if progress_hook else [],
             'ffmpeg_location': get_ffmpeg_path(),
-
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
+    # -----------------------------
+    # DOWNLOAD AUDIO
+    # -----------------------------
     @staticmethod
     def download_audio(url, progress_hook=None):
         path = get_download_path("audio")
@@ -49,4 +73,3 @@ class Downloader:
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
-

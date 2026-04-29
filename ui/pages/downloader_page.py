@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QFileDialog, QComboBox, QLabel, QMessageBox
 )
 from ui.download_worker import DownloadWorker
+from core.downloader import Downloader
 
 
 class DownloaderPage(QWidget):
@@ -19,6 +20,14 @@ class DownloaderPage(QWidget):
         # URL
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("Cole o link do vídeo do YouTube")
+
+        # BOTÃO PREVIEW
+        self.preview_btn = QPushButton("🔍 Validar vídeo")
+        self.preview_btn.clicked.connect(self.load_preview)
+
+        # INFO DO VÍDEO
+        self.video_info_label = QLabel("")
+        self.video_info_label.setStyleSheet("color: gray;")
 
         # FORMATO
         format_layout = QHBoxLayout()
@@ -60,12 +69,14 @@ class DownloaderPage(QWidget):
         # PROGRESSO
         self.progress = QProgressBar()
 
-        # BOTÃO
+        # BOTÃO DOWNLOAD
         self.download_btn = QPushButton("⬇️ Iniciar Download")
         self.download_btn.clicked.connect(self.start_download)
 
         # BUILD
         main_layout.addWidget(self.url_input)
+        main_layout.addWidget(self.preview_btn)
+        main_layout.addWidget(self.video_info_label)
         main_layout.addLayout(format_layout)
         main_layout.addLayout(quality_layout)
         main_layout.addLayout(path_layout)
@@ -75,6 +86,31 @@ class DownloaderPage(QWidget):
         self.setLayout(main_layout)
 
         self.update_button_styles()
+
+    # -----------------------------
+    # PREVIEW
+    # -----------------------------
+    def load_preview(self):
+        url = self.url_input.text().strip()
+
+        if not url:
+            QMessageBox.warning(self, "Aviso", "Insira um link válido.")
+            return
+
+        try:
+            info = Downloader.get_video_info(url)
+
+            duration = info["duration"]
+            minutes = duration // 60 if duration else 0
+
+            self.video_info_label.setText(
+                f"🎬 {info['title']}\n"
+                f"👤 {info['uploader']}\n"
+                f"⏱ {minutes} min"
+            )
+
+        except Exception as e:
+            QMessageBox.critical(self, "Erro", str(e))
 
     # -----------------------------
     # CONTROLES DE MODO
@@ -109,16 +145,11 @@ class DownloaderPage(QWidget):
             QMessageBox.warning(self, "Aviso", "Insira um link válido.")
             return
 
-        # 🔒 Bloquear UI
         self.download_btn.setEnabled(False)
-        self.btn_video.setEnabled(False)
-        self.btn_audio.setEnabled(False)
-
         self.progress.setValue(0)
 
         self.worker = DownloadWorker(url, self.mode)
 
-        # 🔥 LIGAÇÃO DOS SINAIS
         self.worker.progress.connect(self.progress.setValue)
         self.worker.finished.connect(self.on_download_finished)
         self.worker.error.connect(self.on_download_error)
@@ -144,7 +175,4 @@ class DownloaderPage(QWidget):
     # -----------------------------
     def reset_ui(self):
         self.download_btn.setEnabled(True)
-        self.btn_video.setEnabled(True)
-        self.btn_audio.setEnabled(True)
-
         self.progress.setValue(0)
