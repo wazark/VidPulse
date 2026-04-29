@@ -3,8 +3,14 @@ from PySide6.QtWidgets import (
     QLineEdit, QPushButton, QProgressBar,
     QFileDialog, QComboBox, QLabel, QMessageBox
 )
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
+
 from ui.download_worker import DownloadWorker
 from core.downloader import Downloader
+
+import requests
+from io import BytesIO
 
 
 class DownloaderPage(QWidget):
@@ -28,6 +34,11 @@ class DownloaderPage(QWidget):
         # INFO DO VÍDEO
         self.video_info_label = QLabel("")
         self.video_info_label.setStyleSheet("color: gray;")
+
+        # THUMBNAIL
+        self.thumbnail_label = QLabel()
+        self.thumbnail_label.setFixedHeight(180)
+        self.thumbnail_label.setAlignment(Qt.AlignCenter)
 
         # FORMATO
         format_layout = QHBoxLayout()
@@ -73,10 +84,11 @@ class DownloaderPage(QWidget):
         self.download_btn = QPushButton("⬇️ Iniciar Download")
         self.download_btn.clicked.connect(self.start_download)
 
-        # BUILD
+        # BUILD UI
         main_layout.addWidget(self.url_input)
         main_layout.addWidget(self.preview_btn)
         main_layout.addWidget(self.video_info_label)
+        main_layout.addWidget(self.thumbnail_label)  # 🔥 IMPORTANTE
         main_layout.addLayout(format_layout)
         main_layout.addLayout(quality_layout)
         main_layout.addLayout(path_layout)
@@ -108,6 +120,20 @@ class DownloaderPage(QWidget):
                 f"👤 {info['uploader']}\n"
                 f"⏱ {minutes} min"
             )
+
+            # 🔥 CARREGAR THUMBNAIL
+            thumbnail_url = info.get("thumbnail")
+
+            if thumbnail_url:
+                response = requests.get(thumbnail_url, timeout=5)
+                image = QPixmap()
+                image.loadFromData(response.content)
+
+                self.thumbnail_label.setPixmap(
+                    image.scaled(320, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                )
+            else:
+                self.thumbnail_label.clear()
 
         except Exception as e:
             QMessageBox.critical(self, "Erro", str(e))

@@ -38,19 +38,22 @@ class Downloader:
     # DOWNLOAD VIDEO
     # -----------------------------
     @staticmethod
-    def download_video(url, progress_hook=None):
-        path = get_download_path("video")
-
+    def get_video_info(url):
         ydl_opts = {
-            'outtmpl': f'{path}/%(title)s.%(ext)s',
-            'format': 'bestvideo+bestaudio/best',
-            'merge_output_format': 'mp4',
-            'progress_hooks': [progress_hook] if progress_hook else [],
-            'ffmpeg_location': get_ffmpeg_path(),
+            'quiet': True,
+            'skip_download': True,
+            'ffmpeg_location': get_ffmpeg_path()
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            info = ydl.extract_info(url, download=False)
+
+            return {
+                "title": info.get("title"),
+                "uploader": info.get("uploader"),
+                "duration": info.get("duration"),
+                "thumbnail": info.get("thumbnail")  # 🔥 NOVO
+            }
 
     # -----------------------------
     # DOWNLOAD AUDIO
