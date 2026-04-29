@@ -2,7 +2,7 @@
 
 **VidPulse** é uma aplicação desktop para Windows desenvolvida em Python com PySide6, que permite baixar vídeos e áudios do YouTube de forma simples, rápida e com uma interface moderna.
 
-![VidPulse Screenshot](assets/screenshot.png) *(opcional)*
+![VidPulse Screenshot](assets/screenshot.png) *(Em breve)*
 
 ## ✨ Funcionalidades
 
@@ -133,7 +133,7 @@ Este projeto foi desenvolvido para auxiliar alunos no aprendizado de:
 
 ## 👨‍💻 Autor
 
-Diony da Silva Costa – Fundador da Orbytek
+Diony da Silva Costa – Fundador da Orbytek  
 Projeto educacional para alunos da SharkCoders Aveiro
 
 ## 📄 Licença
