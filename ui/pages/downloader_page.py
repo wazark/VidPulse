@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QProgressBar,
-    QFileDialog, QComboBox, QLabel, QMessageBox, QApplication, QMenu
+    QFileDialog, QComboBox, QLabel, QMessageBox, QApplication, QMenu, QFrame
 )
 from PySide6.QtCore import Qt, QUrl, Signal
 from PySide6.QtGui import QPixmap, QDesktopServices
@@ -14,45 +14,43 @@ from core.config import Config
 
 
 class DownloaderPage(QWidget):
-    open_settings_signal = Signal()  # 🔥 Sinal para abrir configurações completas
+    open_settings_signal = Signal()
 
     def __init__(self):
         super().__init__()
 
-        self.mode = Config.get_default_format()  # 'video' ou 'audio'
+        self.mode = Config.get_default_format()
         self.folder_path = None
         self.worker = None
         self.current_video_info = None
+        self.current_stream_url = None   # URL para prévia externa
 
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(16)
+        main_layout.setSpacing(20)
         main_layout.setContentsMargins(30, 30, 30, 30)
 
-        # Cabeçalho com título e botão de configuração
+        # ========== CABEÇALHO ==========
         header_layout = QHBoxLayout()
-        title_label = QLabel("📥 Downloader")
-        title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
+        title_label = QLabel("🎬 Downloader")
+        title_label.setStyleSheet("font-size: 20pt; font-weight: bold;")
         header_layout.addWidget(title_label)
         header_layout.addStretch()
 
-        # Botão de engrenagem com menu popup
         self.settings_btn = QPushButton("⚙️")
-        self.settings_btn.setFixedSize(36, 36)
+        self.settings_btn.setFixedSize(40, 40)
         self.settings_btn.setToolTip("Configurações rápidas")
         self.settings_menu = QMenu(self)
         self.quality_menu = self.settings_menu.addMenu("Qualidade padrão")
         self.format_menu = self.settings_menu.addMenu("Formato padrão")
         self.settings_menu.addSeparator()
-        self.settings_menu.addAction("Abrir configurações completas", self.open_full_settings)
+        self.settings_menu.addAction("⚙️ Configurações avançadas", self.open_full_settings)
 
-        # Preenche submenu de qualidade
         self.quality_actions = {}
         for q in ["Auto", "2160p", "1440p", "1080p", "720p", "480p", "360p"]:
             action = self.quality_menu.addAction(q)
             action.triggered.connect(lambda checked, qual=q: self.set_default_quality(qual))
             self.quality_actions[q] = action
 
-        # Preenche submenu de formato
         self.format_actions = {}
         for fmt, label in [("video", "🎬 MP4"), ("audio", "🎵 MP3")]:
             action = self.format_menu.addAction(label)
@@ -63,53 +61,102 @@ class DownloaderPage(QWidget):
         header_layout.addWidget(self.settings_btn)
         main_layout.addLayout(header_layout)
 
-        # URL
+        # ========== URL E VALIDAÇÃO ==========
+        url_frame = QFrame()
+        url_frame.setObjectName("card")
+        url_layout = QVBoxLayout(url_frame)
+        url_layout.setSpacing(12)
+
         self.url_input = QLineEdit()
-        self.url_input.setPlaceholderText("Cole o link do vídeo do YouTube")
+        self.url_input.setPlaceholderText("Cole o link do YouTube aqui...")
+        url_layout.addWidget(self.url_input)
 
         self.preview_btn = QPushButton("🔍 Validar vídeo")
         self.preview_btn.clicked.connect(self.load_preview)
+        url_layout.addWidget(self.preview_btn)
 
+        main_layout.addWidget(url_frame)
+
+        # ========== INFORMAÇÕES DO VÍDEO ==========
         self.video_info_label = QLabel("")
-        self.video_info_label.setStyleSheet("color: #7A7E8F; font-size: 10pt;")
+        self.video_info_label.setStyleSheet("color: #7A7E8F; font-size: 10pt; padding: 8px;")
         self.video_info_label.setWordWrap(True)
+        self.video_info_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(self.video_info_label)
+
+        # ========== THUMBNAIL E BOTÃO PRÉVIA ==========
+        preview_frame = QFrame()
+        preview_frame.setObjectName("card")
+        preview_frame.setFixedHeight(240)
+        preview_layout = QVBoxLayout(preview_frame)
 
         self.thumbnail_label = QLabel()
-        self.thumbnail_label.setFixedHeight(180)
         self.thumbnail_label.setAlignment(Qt.AlignCenter)
+        self.thumbnail_label.setStyleSheet("background-color: #1E1F2A; border-radius: 8px;")
+        preview_layout.addWidget(self.thumbnail_label)
 
-        # Formatos
-        format_layout = QHBoxLayout()
-        self.btn_video = QPushButton("🎬 VÍDEO")
-        self.btn_audio = QPushButton("🎵 ÁUDIO")
+        self.watch_btn = QPushButton("▶️ Assistir Prévia (janela externa)")
+        self.watch_btn.setEnabled(False)
+        self.watch_btn.clicked.connect(self.open_external_preview)
+        preview_layout.addWidget(self.watch_btn)
+
+        main_layout.addWidget(preview_frame)
+
+        # ========== OPÇÕES DE DOWNLOAD ==========
+        options_frame = QFrame()
+        options_frame.setObjectName("card")
+        options_layout = QVBoxLayout(options_frame)
+        options_layout.setSpacing(15)
+
+        # Linha formato
+        mode_layout = QHBoxLayout()
+        mode_layout.addWidget(QLabel("Formato:"))
+        self.btn_video = QPushButton("🎬 VÍDEO (MP4)")
+        self.btn_audio = QPushButton("🎵 ÁUDIO (MP3)")
         self.btn_video.clicked.connect(lambda: self.set_mode("video"))
         self.btn_audio.clicked.connect(lambda: self.set_mode("audio"))
-        format_layout.addWidget(self.btn_video)
-        format_layout.addWidget(self.btn_audio)
+        mode_layout.addWidget(self.btn_video)
+        mode_layout.addWidget(self.btn_audio)
+        mode_layout.addStretch()
+        options_layout.addLayout(mode_layout)
 
-        # Qualidade
-        quality_layout = QHBoxLayout()
+        # Linha qualidade + pasta
+        row_layout = QHBoxLayout()
+        row_layout.setSpacing(20)
+
+        quality_widget = QWidget()
+        quality_inner = QHBoxLayout(quality_widget)
+        quality_inner.setContentsMargins(0, 0, 0, 0)
         self.quality_label = QLabel("Qualidade:")
         self.quality_box = QComboBox()
         self.quality_box.addItem("Auto")
-        quality_layout.addWidget(self.quality_label)
-        quality_layout.addWidget(self.quality_box)
+        quality_inner.addWidget(self.quality_label)
+        quality_inner.addWidget(self.quality_box)
+        row_layout.addWidget(quality_widget)
 
-        # Pasta
-        path_layout = QHBoxLayout()
-        self.path_label = QLabel("Local de salvamento:")
+        folder_widget = QWidget()
+        folder_inner = QHBoxLayout(folder_widget)
+        folder_inner.setContentsMargins(0, 0, 0, 0)
+        self.path_label = QLabel("Destino:")
         self.path_btn = QPushButton("📁 Escolher pasta")
         self.path_btn.clicked.connect(self.select_folder)
         self.path_display = QLabel("")
         self.path_display.setStyleSheet("color: #00D2FF; font-size: 9pt;")
-        path_layout.addWidget(self.path_label)
-        path_layout.addWidget(self.path_btn)
-        path_layout.addWidget(self.path_display)
+        folder_inner.addWidget(self.path_label)
+        folder_inner.addWidget(self.path_btn)
+        folder_inner.addWidget(self.path_display)
+        row_layout.addWidget(folder_widget)
 
-        # Progresso + ETA + Cancelar
+        row_layout.addStretch()
+        options_layout.addLayout(row_layout)
+
+        main_layout.addWidget(options_frame)
+
+        # ========== PROGRESSO ==========
         progress_layout = QHBoxLayout()
         self.progress = QProgressBar()
         self.progress.setFormat("%p%")
+        self.progress.setFixedHeight(20)
         self.eta_label = QLabel("")
         self.eta_label.setStyleSheet("color: #7A7E8F; font-size: 9pt;")
         self.eta_label.setMinimumWidth(80)
@@ -119,25 +166,16 @@ class DownloaderPage(QWidget):
         progress_layout.addWidget(self.progress, 4)
         progress_layout.addWidget(self.eta_label)
         progress_layout.addWidget(self.cancel_btn)
-
-        # Download
-        self.download_btn = QPushButton("⬇️ Iniciar Download")
-        self.download_btn.clicked.connect(self.start_download)
-
-        # Montagem
-        main_layout.addWidget(self.url_input)
-        main_layout.addWidget(self.preview_btn)
-        main_layout.addWidget(self.video_info_label)
-        main_layout.addWidget(self.thumbnail_label)
-        main_layout.addLayout(format_layout)
-        main_layout.addLayout(quality_layout)
-        main_layout.addLayout(path_layout)
         main_layout.addLayout(progress_layout)
+
+        # Botão download
+        self.download_btn = QPushButton("⬇️ INICIAR DOWNLOAD")
+        self.download_btn.setStyleSheet("font-weight: bold; background-color: #00C853; color: black;")
+        self.download_btn.clicked.connect(self.start_download)
         main_layout.addWidget(self.download_btn)
 
         self.setLayout(main_layout)
 
-        # Carrega configurações salvas
         self.load_saved_settings()
         self.update_button_styles()
         self.load_default_folder()
@@ -148,11 +186,9 @@ class DownloaderPage(QWidget):
     def load_saved_settings(self):
         default_format = Config.get_default_format()
         self.set_mode(default_format)
-
         self.default_quality = Config.get_default_quality()
         for q, action in self.quality_actions.items():
             action.setChecked(q == self.default_quality)
-
         for fmt, action in self.format_actions.items():
             action.setChecked(fmt == default_format)
 
@@ -171,17 +207,19 @@ class DownloaderPage(QWidget):
         self.set_mode(fmt)
 
     def open_full_settings(self):
-        """Abre a página de configurações completas."""
         self.open_settings_signal.emit()
 
     # -----------------------------
-    # PREVIEW
+    # PRÉVIA EXTERNA
     # -----------------------------
     def load_preview(self):
         url = self.url_input.text().strip()
         if not url:
             QMessageBox.warning(self, "Aviso", "Insira um link válido.")
             return
+
+        self.watch_btn.setEnabled(False)
+        self.current_stream_url = None
 
         try:
             info = Downloader.get_video_info(url)
@@ -191,21 +229,25 @@ class DownloaderPage(QWidget):
             minutes = duration // 60 if duration else 0
             hours = minutes // 60 if minutes >= 60 else 0
             duration_text = f"{hours}h {minutes % 60}min" if hours > 0 else f"{minutes} min"
-
             size_text = f"💾 {info['filesize_mb']} MB" if info.get("filesize_mb") else "💾 Tamanho não disponível"
 
             self.video_info_label.setText(
                 f"🎬 {info['title']}\n👤 {info['uploader']}\n⏱ {duration_text}  |  {size_text}"
             )
 
+            # Thumbnail
             if info.get("thumbnail"):
-                response = requests.get(info["thumbnail"], timeout=5)
-                image = QPixmap()
-                image.loadFromData(response.content)
-                self.thumbnail_label.setPixmap(
-                    image.scaled(320, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                )
+                try:
+                    response = requests.get(info["thumbnail"], timeout=5)
+                    image = QPixmap()
+                    image.loadFromData(response.content)
+                    if not image.isNull():
+                        scaled = image.scaled(400, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                        self.thumbnail_label.setPixmap(scaled)
+                except:
+                    pass
 
+            # Qualidades
             self.quality_box.clear()
             self.quality_box.addItem("Auto")
             if info.get("qualities"):
@@ -215,10 +257,26 @@ class DownloaderPage(QWidget):
                 elif self.default_quality == "Auto":
                     self.quality_box.setCurrentIndex(0)
 
-            QMessageBox.information(self, "Sucesso", f"Vídeo validado!\n\nTítulo: {info['title']}")
+            # Obter URL de streaming (360p para prévia)
+            stream_url = Downloader.get_stream_url(url, height=360)
+            if stream_url:
+                self.current_stream_url = stream_url
+                self.watch_btn.setEnabled(True)
+                self.video_info_label.setText(self.video_info_label.text() + "\n🎬 Prévia disponível.")
+            else:
+                self.watch_btn.setEnabled(False)
+                self.video_info_label.setText(self.video_info_label.text() + "\n⚠️ Prévia não disponível.")
+
+            QMessageBox.information(self, "✅ Sucesso", f"Vídeo validado!\n\n{info['title']}")
 
         except Exception as e:
-            QMessageBox.critical(self, "Erro", f"Não foi possível carregar informações:\n{str(e)}")
+            QMessageBox.critical(self, "❌ Erro", f"Não foi possível carregar informações:\n{str(e)}")
+
+    def open_external_preview(self):
+        if self.current_stream_url:
+            QDesktopServices.openUrl(QUrl(self.current_stream_url))
+        else:
+            QMessageBox.warning(self, "Prévia", "Nenhum URL de prévia disponível. Valide o vídeo primeiro.")
 
     # -----------------------------
     # CONTROLES DE MODO
@@ -293,7 +351,7 @@ class DownloaderPage(QWidget):
         self.update_button_styles()
 
     # -----------------------------
-    # PASTA
+    # GESTÃO DE PASTA
     # -----------------------------
     def load_default_folder(self):
         if self.mode == "video":
@@ -303,7 +361,8 @@ class DownloaderPage(QWidget):
 
         if os.path.exists(default_path):
             self.folder_path = default_path
-            self.path_display.setText(f"📁 Pasta padrão: {default_path}")
+            self.path_display.setText(os.path.basename(default_path))
+            self.path_display.setToolTip(default_path)
         else:
             self.folder_path = None
             self.path_display.setText("")
@@ -312,7 +371,8 @@ class DownloaderPage(QWidget):
         folder = QFileDialog.getExistingDirectory(self, "Escolher pasta de destino")
         if folder:
             self.folder_path = folder
-            self.path_display.setText(f"📁 {folder}")
+            self.path_display.setText(os.path.basename(folder))
+            self.path_display.setToolTip(folder)
         else:
             self.folder_path = None
             self.path_display.setText("")

@@ -6,6 +6,10 @@ QWidget {
     font-size: 11pt;
 }
 
+QLabel {
+    color: #1F2A3E;
+}
+
 QPushButton {
     background-color: #FFFFFF;
     border-radius: 10px;
@@ -45,6 +49,12 @@ QFrame#card {
 QFrame#card:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
+QFrame#card QLabel {
+    color: #1F2A3E;
+}
+QFrame#card QWidget {
+    background-color: transparent;
+}
 
 QProgressBar {
     background-color: #E2E8F0;
@@ -64,6 +74,7 @@ QComboBox {
     border: 1px solid #D0D7DE;
     border-radius: 8px;
     padding: 6px 12px;
+    color: #1F2A3E;
 }
 QComboBox:hover {
     border-color: #5D67E2;

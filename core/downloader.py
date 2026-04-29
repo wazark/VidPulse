@@ -245,3 +245,43 @@ class Downloader:
                         final_path = os.path.join(path, f)
                         break
             return final_path
+
+    @staticmethod
+    def get_stream_url(url, height=360):
+        """
+        Retorna uma URL direta de streaming para um formato MP4 que inclua áudio.
+        Prioriza formatos com altura <= height e que tenham codec de vídeo e áudio.
+        Fallback para o primeiro MP4 disponível.
+        """
+        cookie_file = Downloader.get_cookie_file()
+        ydl_opts = {
+            'quiet': True,
+            'skip_download': True,
+            'ffmpeg_location': get_ffmpeg_path(),
+            'ignoreerrors': True,
+            'extract_flat': False,
+            'extractor_args': Downloader.get_extractor_args(),
+        }
+        if cookie_file:
+            ydl_opts['cookiefile'] = cookie_file
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            formats = info.get('formats', [])
+            # Procurar formato MP4 com vídeo e áudio, altura <= height
+            best = None
+            for f in formats:
+                if (f.get('ext') == 'mp4' and
+                        f.get('height') and f['height'] <= height and
+                        f.get('acodec') != 'none' and f.get('vcodec') != 'none'):
+                    if best is None or f['height'] > best['height']:
+                        best = f
+            if not best:
+                # Fallback: qualquer MP4 (pode ser só vídeo)
+                for f in formats:
+                    if f.get('ext') == 'mp4':
+                        best = f
+                        break
+            if best and best.get('url'):
+                return best['url']
+        return None
