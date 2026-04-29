@@ -3,15 +3,14 @@ from PySide6.QtWidgets import (
     QLineEdit, QPushButton, QProgressBar,
     QFileDialog, QComboBox, QLabel, QMessageBox, QApplication
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QPixmap, QDesktopServices
+import os
+import requests
 
 from ui.download_worker import DownloadWorker
 from core.downloader import Downloader
-from core.config import Config  # 🔥 Para carregar pasta padrão
-
-import requests
-import os
+from core.config import Config
 
 
 class DownloaderPage(QWidget):
@@ -31,11 +30,9 @@ class DownloaderPage(QWidget):
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("Cole o link do vídeo do YouTube")
 
-        # Preview button
         self.preview_btn = QPushButton("🔍 Validar vídeo")
         self.preview_btn.clicked.connect(self.load_preview)
 
-        # Info labels (agora com tamanho)
         self.video_info_label = QLabel("")
         self.video_info_label.setStyleSheet("color: #7A7E8F; font-size: 10pt;")
         self.video_info_label.setWordWrap(True)
@@ -44,7 +41,7 @@ class DownloaderPage(QWidget):
         self.thumbnail_label.setFixedHeight(180)
         self.thumbnail_label.setAlignment(Qt.AlignCenter)
 
-        # Format selection
+        # Formatos
         format_layout = QHBoxLayout()
         self.btn_video = QPushButton("🎬 MP4")
         self.btn_audio = QPushButton("🎵 MP3")
@@ -53,7 +50,7 @@ class DownloaderPage(QWidget):
         format_layout.addWidget(self.btn_video)
         format_layout.addWidget(self.btn_audio)
 
-        # Quality
+        # Qualidade
         quality_layout = QHBoxLayout()
         self.quality_label = QLabel("Qualidade:")
         self.quality_box = QComboBox()
@@ -61,7 +58,7 @@ class DownloaderPage(QWidget):
         quality_layout.addWidget(self.quality_label)
         quality_layout.addWidget(self.quality_box)
 
-        # Folder selection
+        # Pasta
         path_layout = QHBoxLayout()
         self.path_label = QLabel("Local de salvamento:")
         self.path_btn = QPushButton("📁 Escolher pasta")
@@ -72,14 +69,14 @@ class DownloaderPage(QWidget):
         path_layout.addWidget(self.path_btn)
         path_layout.addWidget(self.path_display)
 
-        # Progress
+        # Progresso
         self.progress = QProgressBar()
 
-        # Download button
+        # Download
         self.download_btn = QPushButton("⬇️ Iniciar Download")
         self.download_btn.clicked.connect(self.start_download)
 
-        # Add to layout
+        # Montagem
         main_layout.addWidget(self.url_input)
         main_layout.addWidget(self.preview_btn)
         main_layout.addWidget(self.video_info_label)
@@ -92,12 +89,10 @@ class DownloaderPage(QWidget):
 
         self.setLayout(main_layout)
         self.update_button_styles()
-
-        # 🔥 Carrega pasta padrão salva nas configurações
         self.load_default_folder()
 
     # -----------------------------
-    # PREVIEW (agora com tamanho)
+    # PREVIEW
     # -----------------------------
     def load_preview(self):
         url = self.url_input.text().strip()
@@ -114,13 +109,10 @@ class DownloaderPage(QWidget):
             hours = minutes // 60 if minutes >= 60 else 0
             duration_text = f"{hours}h {minutes % 60}min" if hours > 0 else f"{minutes} min"
 
-            # Monta texto com tamanho se disponível
             size_text = f"💾 {info['filesize_mb']} MB" if info.get("filesize_mb") else "💾 Tamanho não disponível"
 
             self.video_info_label.setText(
-                f"🎬 {info['title']}\n"
-                f"👤 {info['uploader']}\n"
-                f"⏱ {duration_text}  |  {size_text}"
+                f"🎬 {info['title']}\n👤 {info['uploader']}\n⏱ {duration_text}  |  {size_text}"
             )
 
             if info.get("thumbnail"):
@@ -154,7 +146,6 @@ class DownloaderPage(QWidget):
             self.quality_box.setCurrentText("Auto")
 
     def update_button_styles(self):
-        """Define estilos dos botões MP4/MP3 baseado no tema atual (Dark/Light)."""
         app = QApplication.instance()
         bg_color = app.palette().window().color()
         is_dark = bg_color.lightness() < 128
@@ -214,10 +205,9 @@ class DownloaderPage(QWidget):
         self.update_button_styles()
 
     # -----------------------------
-    # PASTA (com persistência)
+    # PASTA
     # -----------------------------
     def load_default_folder(self):
-        """Carrega a pasta padrão das configurações (vídeo ou áudio)."""
         if self.mode == "video":
             default_path = Config.get_default_video_folder()
         else:
@@ -264,8 +254,19 @@ class DownloaderPage(QWidget):
 
         self.worker.start()
 
-    def on_download_finished(self, message):
-        QMessageBox.information(self, "✅ Download concluído", message)
+    # ---------- NOVO MÉTODO COM BOTÃO ABRIR PASTA ----------
+    def on_download_finished(self, message, file_path):
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Download concluído")
+        msg_box.setText(f"{message}\n\nFicheiro guardado em:\n{file_path}")
+        msg_box.setIcon(QMessageBox.Information)
+        open_btn = msg_box.addButton("📂 Abrir pasta", QMessageBox.ActionRole)
+        ok_btn = msg_box.addButton("OK", QMessageBox.AcceptRole)
+        msg_box.exec()
+
+        if msg_box.clickedButton() == open_btn:
+            folder = os.path.dirname(file_path)
+            QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
         self.reset_ui()
 
     def on_download_error(self, error_message):

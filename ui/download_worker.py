@@ -4,7 +4,7 @@ from core.downloader import Downloader
 
 class DownloadWorker(QThread):
     progress = Signal(int)
-    finished = Signal(str)
+    finished = Signal(str, str)  # (mensagem, caminho_ficheiro)
     error = Signal(str)
 
     def __init__(self, url, mode, quality=None, output_path=None):
@@ -25,25 +25,24 @@ class DownloadWorker(QThread):
                         pass
 
             if self.mode == "video":
-                Downloader.download_video(
+                file_path = Downloader.download_video(
                     self.url,
                     self.quality,
                     progress_hook,
                     self.output_path
                 )
-                self.finished.emit("✅ Vídeo descarregado com sucesso!")
+                self.finished.emit("✅ Vídeo descarregado com sucesso!", file_path)
             else:
-                Downloader.download_audio(
+                file_path = Downloader.download_audio(
                     self.url,
                     progress_hook,
                     self.output_path
                 )
-                self.finished.emit("✅ Áudio descarregado com sucesso!")
+                self.finished.emit("✅ Áudio descarregado com sucesso!", file_path)
 
         except Exception as e:
             msg = str(e)
 
-            # Tratamento de erros amigável
             if "not available" in msg.lower():
                 self.error.emit(
                     "❌ Este vídeo não está disponível.\n\n"

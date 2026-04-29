@@ -77,7 +77,6 @@ class Downloader:
                 best_filesize = None
 
                 for f in formats:
-                    # Captura tamanho do melhor formato (vídeo+áudio combinados)
                     if f.get("filesize") and (best_filesize is None or f["filesize"] > best_filesize):
                         best_filesize = f["filesize"]
 
@@ -93,11 +92,9 @@ class Downloader:
 
                 qualities = sorted(qualities, key=lambda x: int(x.replace("p", "")), reverse=True)
 
-                # Se não encontrou filesize, tenta estimar via tamanho dos requests
                 if best_filesize is None and info.get("filesize"):
                     best_filesize = info["filesize"]
 
-                # Converte bytes para MB (arredondado)
                 size_mb = round(best_filesize / (1024 * 1024), 1) if best_filesize else None
 
                 return {
@@ -107,7 +104,7 @@ class Downloader:
                     "thumbnail": info.get("thumbnail"),
                     "qualities": qualities,
                     "format_map": format_map,
-                    "filesize_mb": size_mb,          # 🔥 NOVO: tamanho estimado
+                    "filesize_mb": size_mb,
                 }
         except Exception as e:
             error_msg = str(e)
@@ -121,7 +118,7 @@ class Downloader:
                 raise Exception(f"Erro ao obter informações: {error_msg}")
 
     # -----------------------------
-    # DOWNLOAD VIDEO (COM MULTI-CLIENT + FALLBACK)
+    # DOWNLOAD VIDEO (com retorno do caminho)
     # -----------------------------
     @staticmethod
     def download_video(url, quality=None, progress_hook=None, output_path=None):
@@ -158,9 +155,21 @@ class Downloader:
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
+                info = ydl.extract_info(url, download=True)
+                # Obtém o nome base do ficheiro (sem extensão)
+                base_filename = ydl.prepare_filename(info)
+                # A extensão final será .mp4 (já que merge_output_format = 'mp4')
+                final_path = base_filename if base_filename.endswith('.mp4') else base_filename + '.mp4'
+                if not os.path.exists(final_path):
+                    # Fallback: procurar qualquer .mp4 no diretório com o título
+                    for f in os.listdir(path):
+                        if f.endswith('.mp4') and info['title'] in f:
+                            final_path = os.path.join(path, f)
+                            break
+                return final_path
         except Exception as e:
             error_msg = str(e)
+            # Fallback para formato simples
             if "not available" in error_msg.lower() or "requested format" in error_msg.lower():
                 if progress_hook:
                     progress_hook({'status': 'downloading', '_percent_str': '0%'})
@@ -179,12 +188,20 @@ class Downloader:
                     fallback_opts['cookiefile'] = cookie_file
 
                 with yt_dlp.YoutubeDL(fallback_opts) as ydl:
-                    ydl.download([url])
+                    info = ydl.extract_info(url, download=True)
+                    base_filename = ydl.prepare_filename(info)
+                    final_path = base_filename if base_filename.endswith('.mp4') else base_filename + '.mp4'
+                    if not os.path.exists(final_path):
+                        for f in os.listdir(path):
+                            if f.endswith('.mp4') and info['title'] in f:
+                                final_path = os.path.join(path, f)
+                                break
+                    return final_path
             else:
                 raise e
 
     # -----------------------------
-    # DOWNLOAD AUDIO
+    # DOWNLOAD AUDIO (com retorno do caminho)
     # -----------------------------
     @staticmethod
     def download_audio(url, progress_hook=None, output_path=None):
@@ -214,4 +231,16 @@ class Downloader:
             ydl_opts['cookiefile'] = cookie_file
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            info = ydl.extract_info(url, download=True)
+            # O pós-processador converte para mp3
+            base_filename = ydl.prepare_filename(info)
+            # Remove a extensão original (pode ser .m4a ou .webm) e adiciona .mp3
+            base_without_ext = os.path.splitext(base_filename)[0]
+            final_path = base_without_ext + '.mp3'
+            if not os.path.exists(final_path):
+                # Fallback: procurar .mp3 no diretório
+                for f in os.listdir(path):
+                    if f.endswith('.mp3') and info['title'] in f:
+                        final_path = os.path.join(path, f)
+                        break
+            return final_path
