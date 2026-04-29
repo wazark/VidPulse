@@ -30,4 +30,16 @@ class DownloadWorker(QThread):
                 self.finished.emit("Áudio descarregado com sucesso!")
 
         except Exception as e:
-            self.error.emit(str(e))
+            msg = str(e)
+
+            # 🔥 TRATAMENTO DE ERROS MAIS AMIGÁVEL
+            if "This video is not available" in msg:
+                self.error.emit("Este vídeo não está disponível, foi removido ou está restrito.")
+            elif "Private video" in msg:
+                self.error.emit("Este vídeo é privado e não pode ser descarregado.")
+            elif "Sign in to confirm your age" in msg:
+                self.error.emit("Este vídeo possui restrição de idade e requer autenticação.")
+            elif "HTTP Error 403" in msg:
+                self.error.emit("Acesso negado ao vídeo. Pode estar bloqueado na sua região.")
+            else:
+                self.error.emit(f"Erro ao processar o download:\n{msg}")
