@@ -1,16 +1,16 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit,
-    QPushButton, QMessageBox
+    QPushButton, QMessageBox, QProgressBar
 )
-from core.downloader import Downloader
+from ui.download_worker import DownloadWorker
 
 
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Orbytek MediaGrabber")
-        self.setFixedSize(400, 200)
+        self.setWindowTitle("VidPulse")
+        self.setFixedSize(400, 250)
 
         layout = QVBoxLayout()
 
@@ -19,6 +19,10 @@ class MainWindow(QWidget):
 
         self.url_input = QLineEdit()
         layout.addWidget(self.url_input)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setValue(0)
+        layout.addWidget(self.progress_bar)
 
         self.btn_video = QPushButton("Baixar MP4")
         self.btn_video.clicked.connect(self.download_video)
@@ -30,31 +34,48 @@ class MainWindow(QWidget):
 
         self.setLayout(layout)
 
-    def download_video(self):
+        self.worker = None
+
+    def start_download(self, mode):
         url = self.url_input.text().strip()
 
         if not url:
             self.show_error("Insere um link válido.")
             return
 
-        try:
-            Downloader.download_video(url)
-            self.show_success("Download do vídeo concluído!")
-        except Exception as e:
-            self.show_error(str(e))
+        self.btn_video.setEnabled(False)
+        self.btn_audio.setEnabled(False)
+        self.progress_bar.setValue(0)
+
+        self.worker = DownloadWorker(url, mode)
+
+        self.worker.progress.connect(self.update_progress)
+        self.worker.finished.connect(self.download_finished)
+        self.worker.error.connect(self.download_error)
+
+        self.worker.start()
+
+    def download_video(self):
+        self.start_download("video")
 
     def download_audio(self):
-        url = self.url_input.text().strip()
+        self.start_download("audio")
 
-        if not url:
-            self.show_error("Insere um link válido.")
-            return
+    def update_progress(self, value):
+        self.progress_bar.setValue(value)
 
-        try:
-            Downloader.download_audio(url)
-            self.show_success("Download do áudio concluído!")
-        except Exception as e:
-            self.show_error(str(e))
+    def download_finished(self, message):
+        self.show_success(message)
+        self.reset_ui()
+
+    def download_error(self, message):
+        self.show_error(message)
+        self.reset_ui()
+
+    def reset_ui(self):
+        self.btn_video.setEnabled(True)
+        self.btn_audio.setEnabled(True)
+        self.progress_bar.setValue(0)
 
     def show_error(self, message):
         QMessageBox.critical(self, "Erro", message)
