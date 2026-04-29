@@ -36,7 +36,7 @@ class SettingsPage(QWidget):
         tab_appearance.setLayout(appearance_layout)
         self.tabs.addTab(tab_appearance, "Aparência")
 
-        # -------------------- ABA DOWNLOADS --------------------
+        # -------------------- ABA DOWNLOADS (MODIFICADA) --------------------
         tab_downloads = QWidget()
         downloads_layout = QVBoxLayout()
         downloads_layout.setSpacing(15)
@@ -72,13 +72,32 @@ class SettingsPage(QWidget):
         self.default_quality_combo.currentTextChanged.connect(Config.set_default_quality)
         downloads_layout.addWidget(self.default_quality_combo)
 
-        downloads_layout.addWidget(QLabel("🎬 Formato padrão:"))
-        self.default_format_combo = QComboBox()
-        self.default_format_combo.addItems(["MP4 (Vídeo)", "MP3 (Áudio)"])
-        current_fmt = Config.get_default_format()
-        self.default_format_combo.setCurrentIndex(0 if current_fmt == "video" else 1)
-        self.default_format_combo.currentIndexChanged.connect(self.on_default_format_changed)
-        downloads_layout.addWidget(self.default_format_combo)
+        # 🔥 Modo padrão (MP4 ou MP3)
+        downloads_layout.addWidget(QLabel("🎬 Modo padrão:"))
+        self.default_mode_combo = QComboBox()
+        self.default_mode_combo.addItems(["MP4 (Vídeo)", "MP3 (Áudio)"])
+        current_mode = Config.get_default_format()
+        self.default_mode_combo.setCurrentIndex(0 if current_mode == "video" else 1)
+        self.default_mode_combo.currentIndexChanged.connect(self.on_default_mode_changed)
+        downloads_layout.addWidget(self.default_mode_combo)
+
+        downloads_layout.addWidget(QLabel(""))  # espaçamento
+
+        # 🔥 Formato de vídeo
+        downloads_layout.addWidget(QLabel("🎬 Formato de vídeo:"))
+        self.video_format_combo = QComboBox()
+        self.video_format_combo.addItems(["mp4", "webm", "mkv"])
+        self.video_format_combo.setCurrentText(Config.get_default_video_format())
+        self.video_format_combo.currentTextChanged.connect(Config.set_default_video_format)
+        downloads_layout.addWidget(self.video_format_combo)
+
+        # 🔥 Formato de áudio
+        downloads_layout.addWidget(QLabel("🎵 Formato de áudio:"))
+        self.audio_format_combo = QComboBox()
+        self.audio_format_combo.addItems(["mp3", "aac", "ogg", "m4a"])
+        self.audio_format_combo.setCurrentText(Config.get_default_audio_format())
+        self.audio_format_combo.currentTextChanged.connect(Config.set_default_audio_format)
+        downloads_layout.addWidget(self.audio_format_combo)
 
         downloads_layout.addWidget(QLabel("📥 Downloads simultâneos (em breve):"))
         self.concurrent_spin = QSpinBox()
@@ -172,8 +191,8 @@ class SettingsPage(QWidget):
                 self.audio_folder_display.setText(folder)
             QMessageBox.information(self, "Sucesso", f"Pasta padrão para {media_type} atualizada.")
 
-    # ---------- Formato padrão ----------
-    def on_default_format_changed(self, index):
+    # ---------- Modo padrão (MP4/MP3) ----------
+    def on_default_mode_changed(self, index):
         fmt = "video" if index == 0 else "audio"
         Config.set_default_format(fmt)
 
@@ -227,10 +246,10 @@ class SettingsPage(QWidget):
             "🎬 **Download de Vídeos:**\n"
             "1. Cole o link do YouTube\n"
             "2. Clique em 'Validar vídeo'\n"
-            "3. Escolha MP4 ou MP3\n"
+            "3. Escolha MP4 ou MP3 (formato real será o definido nas Configurações)\n"
             "4. Defina qualidade\n"
             "5. Escolha a pasta\n"
             "6. Clique em Download\n\n"
             "🍪 **Vídeos com restrição:** use cookies.\n"
-            "⚙️ **Configurações:** tema, pastas e formatos padrão são salvos automaticamente."
+            "⚙️ **Configurações:** tema, pastas, formatos de vídeo/áudio são salvos automaticamente."
         )

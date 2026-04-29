@@ -62,7 +62,6 @@ class Config:
     # ---------- QUALIDADE PADRÃO ----------
     @staticmethod
     def get_default_quality():
-        """Retorna a qualidade padrão para downloads (ex: 'Auto', '1080p')."""
         settings = Config.get_settings()
         return settings.value("default_quality", "Auto")
 
@@ -71,10 +70,10 @@ class Config:
         settings = Config.get_settings()
         settings.setValue("default_quality", quality)
 
-    # ---------- FORMATO PADRÃO (MP4/MP3) ----------
+    # ---------- MODO PADRÃO (MP4 ou MP3) ----------
     @staticmethod
     def get_default_format():
-        """Retorna 'video' ou 'audio' como formato padrão."""
+        """Retorna 'video' ou 'audio' – modo predefinido (botão MP4/MP3)."""
         settings = Config.get_settings()
         return settings.value("default_format", "video")
 
@@ -82,6 +81,28 @@ class Config:
     def set_default_format(fmt):
         settings = Config.get_settings()
         settings.setValue("default_format", fmt)
+
+    # ---------- FORMATO DE VÍDEO (mp4, webm, mkv) ----------
+    @staticmethod
+    def get_default_video_format():
+        settings = Config.get_settings()
+        return settings.value("default_video_format", "mp4")
+
+    @staticmethod
+    def set_default_video_format(fmt):
+        settings = Config.get_settings()
+        settings.setValue("default_video_format", fmt)
+
+    # ---------- FORMATO DE ÁUDIO (mp3, aac, ogg, m4a) ----------
+    @staticmethod
+    def get_default_audio_format():
+        settings = Config.get_settings()
+        return settings.value("default_audio_format", "mp3")
+
+    @staticmethod
+    def set_default_audio_format(fmt):
+        settings = Config.get_settings()
+        settings.setValue("default_audio_format", fmt)
 
     # ---------- DOWNLOADS SIMULTÂNEOS (reservado) ----------
     @staticmethod

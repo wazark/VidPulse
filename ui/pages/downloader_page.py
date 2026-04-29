@@ -80,8 +80,8 @@ class DownloaderPage(QWidget):
 
         # Formatos
         format_layout = QHBoxLayout()
-        self.btn_video = QPushButton("🎬 MP4")
-        self.btn_audio = QPushButton("🎵 MP3")
+        self.btn_video = QPushButton("🎬 VÍDEO")
+        self.btn_audio = QPushButton("🎵 ÁUDIO")
         self.btn_video.clicked.connect(lambda: self.set_mode("video"))
         self.btn_audio.clicked.connect(lambda: self.set_mode("audio"))
         format_layout.addWidget(self.btn_video)
