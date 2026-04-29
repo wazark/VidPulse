@@ -19,6 +19,7 @@ class DownloaderPage(QWidget):
         self.mode = "video"
         self.folder_path = None
         self.worker = None
+        self.current_video_info = None  # Guarda informações do vídeo atual
 
         main_layout = QVBoxLayout()
 
@@ -68,8 +69,12 @@ class DownloaderPage(QWidget):
         self.path_btn = QPushButton("📁 Escolher pasta de destino")
         self.path_btn.clicked.connect(self.select_folder)
 
+        self.path_display = QLabel("")  # 🔥 NOVO: mostra a pasta selecionada
+        self.path_display.setStyleSheet("color: #00c853; font-size: 9pt;")
+
         path_layout.addWidget(self.path_label)
         path_layout.addWidget(self.path_btn)
+        path_layout.addWidget(self.path_display)
 
         # PROGRESSO
         self.progress = QProgressBar()
@@ -105,14 +110,21 @@ class DownloaderPage(QWidget):
 
         try:
             info = Downloader.get_video_info(url)
+            self.current_video_info = info  # Guarda para uso posterior
 
             duration = info["duration"]
             minutes = duration // 60 if duration else 0
+            hours = minutes // 60 if minutes >= 60 else 0
+
+            if hours > 0:
+                duration_text = f"{hours}h {minutes % 60}min"
+            else:
+                duration_text = f"{minutes} min"
 
             self.video_info_label.setText(
                 f"🎬 {info['title']}\n"
                 f"👤 {info['uploader']}\n"
-                f"⏱ {minutes} min"
+                f"⏱ {duration_text}"
             )
 
             # Thumbnail
@@ -127,15 +139,15 @@ class DownloaderPage(QWidget):
 
             # Qualidades reais
             self.quality_box.clear()
+            self.quality_box.addItem("Auto")
 
             if info.get("qualities"):
-                self.quality_box.addItem("Auto")
                 self.quality_box.addItems(info["qualities"])
-            else:
-                self.quality_box.addItem("Auto")
+
+            QMessageBox.information(self, "Sucesso", f"Vídeo validado com sucesso!\n\nTítulo: {info['title']}")
 
         except Exception as e:
-            QMessageBox.critical(self, "Erro", str(e))
+            QMessageBox.critical(self, "Erro", f"Não foi possível carregar informações do vídeo:\n{str(e)}")
 
     # -----------------------------
     # CONTROLES DE MODO
@@ -144,21 +156,33 @@ class DownloaderPage(QWidget):
         self.mode = mode
         self.update_button_styles()
 
+        # Ajusta label da qualidade baseado no modo
+        if mode == "video":
+            self.quality_label.setText("Qualidade do vídeo:")
+        else:
+            self.quality_label.setText("Qualidade do áudio:")
+            self.quality_box.setCurrentText("Auto")
+
     def update_button_styles(self):
         if self.mode == "video":
-            self.btn_video.setStyleSheet("background-color: #00c853; color: black;")
-            self.btn_audio.setStyleSheet("")
+            self.btn_video.setStyleSheet("background-color: #00c853; color: black; font-weight: bold;")
+            self.btn_audio.setStyleSheet("background-color: #1a1d25;")
         else:
-            self.btn_audio.setStyleSheet("background-color: #00c853; color: black;")
-            self.btn_video.setStyleSheet("")
+            self.btn_audio.setStyleSheet("background-color: #00c853; color: black; font-weight: bold;")
+            self.btn_video.setStyleSheet("background-color: #1a1d25;")
 
     # -----------------------------
     # PASTA
     # -----------------------------
     def select_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Escolher pasta")
+        folder = QFileDialog.getExistingDirectory(self, "Escolher pasta de destino")
         if folder:
             self.folder_path = folder
+            # 🔥 MOSTRA A PASTA SELECIONADA NA INTERFACE
+            self.path_display.setText(f"📁 {folder}")
+        else:
+            self.folder_path = None
+            self.path_display.setText("")
 
     # -----------------------------
     # DOWNLOAD
@@ -175,12 +199,14 @@ class DownloaderPage(QWidget):
 
         # Captura qualidade
         selected_quality = self.quality_box.currentText()
-
         if selected_quality == "Auto":
             selected_quality = None
 
-        # Inicializa worker
-        self.worker = DownloadWorker(url, self.mode, selected_quality)
+        # 🔥 USA A PASTA SELECIONADA (se houver)
+        output_path = self.folder_path if self.folder_path else None
+
+        # Inicializa worker com a pasta personalizada
+        self.worker = DownloadWorker(url, self.mode, selected_quality, output_path)
 
         self.worker.progress.connect(self.progress.setValue)
         self.worker.finished.connect(self.on_download_finished)
@@ -192,14 +218,14 @@ class DownloaderPage(QWidget):
     # SUCESSO
     # -----------------------------
     def on_download_finished(self, message):
-        QMessageBox.information(self, "Download concluído", message)
+        QMessageBox.information(self, "✅ Download concluído", message)
         self.reset_ui()
 
     # -----------------------------
     # ERRO
     # -----------------------------
     def on_download_error(self, error_message):
-        QMessageBox.critical(self, "Erro no download", error_message)
+        QMessageBox.critical(self, "❌ Erro no download", error_message)
         self.reset_ui()
 
     # -----------------------------

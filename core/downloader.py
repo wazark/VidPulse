@@ -31,42 +31,80 @@ class Downloader:
 
             formats = info.get("formats", [])
 
-            # 🔥 Extrair qualidades únicas
             qualities = set()
+            format_map = {}  # Mapeia qualidade -> format_id
 
             for f in formats:
                 if f.get("height"):
-                    qualities.add(f"{f['height']}p")
+                    quality = f"{f['height']}p"
+                    qualities.add(quality)
 
-            qualities = sorted(qualities, key=lambda x: int(x.replace("p", "")), reverse=True)
+                    # Guarda o melhor format_id para cada qualidade
+                    if quality not in format_map or f.get("tbr", 0) > format_map[quality]["tbr"]:
+                        format_map[quality] = {
+                            "format_id": f["format_id"],
+                            "tbr": f.get("tbr", 0)
+                        }
+
+            qualities = sorted(
+                qualities,
+                key=lambda x: int(x.replace("p", "")),
+                reverse=True
+            )
 
             return {
                 "title": info.get("title"),
                 "uploader": info.get("uploader"),
                 "duration": info.get("duration"),
                 "thumbnail": info.get("thumbnail"),
-                "qualities": qualities  # 🔥 NOVO
+                "qualities": qualities,
+                "format_map": format_map  # Retorna também o mapeamento
             }
 
     # -----------------------------
-    # DOWNLOAD VIDEO
+    # DOWNLOAD VIDEO (CORRIGIDO - COMPATÍVEL COM WMP)
     # -----------------------------
     @staticmethod
-    def download_video(url, quality=None, progress_hook=None):
-        path = get_download_path("video")
-
-        if quality:
-            height = quality.replace("p", "")
-            format_str = f"bestvideo[height<={height}]+bestaudio/best"
+    def download_video(url, quality=None, progress_hook=None, output_path=None):
+        # Usa pasta personalizada ou padrão
+        if output_path is None:
+            path = get_download_path("video")
         else:
-            format_str = "bestvideo+bestaudio/best"
+            path = output_path
+
+        # Garante que o diretório existe
+        os.makedirs(path, exist_ok=True)
+
+        # Estratégia de formatos compatíveis (CORREÇÃO PRINCIPAL)
+        if quality:
+            # Extrai altura da qualidade (ex: "1080p" -> 1080)
+            height = int(quality.replace("p", ""))
+
+            # 🔥 SOLUÇÃO: Força MP4 video + M4A audio (AAC codec)
+            # Isso garante compatibilidade com Windows Media Player
+            format_str = f"bestvideo[ext=mp4][height<={height}]+bestaudio[ext=m4a]/bestvideo[ext=mp4][height<={height}]+bestaudio/best[ext=mp4]"
+        else:
+            # Modo automático - prioriza MP4 + M4A
+            format_str = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]"
 
         ydl_opts = {
             'outtmpl': f'{path}/%(title)s.%(ext)s',
+
+            # 🔥 FORMATO PRIORITÁRIO (MP4 container + AAC audio)
             'format': format_str,
+
+            # 🔥 Força merge para MP4
             'merge_output_format': 'mp4',
+
+            # 🔥 Post-processadores mínimos (evita conversão desnecessária)
+            'postprocessors': [],
+
             'progress_hooks': [progress_hook] if progress_hook else [],
             'ffmpeg_location': get_ffmpeg_path(),
+
+            # 🔥 Opções para melhor compatibilidade
+            'prefer_ffmpeg': True,
+            'fixup': 'detect_or_warn',
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -76,17 +114,24 @@ class Downloader:
     # DOWNLOAD AUDIO
     # -----------------------------
     @staticmethod
-    def download_audio(url, progress_hook=None):
-        path = get_download_path("audio")
+    def download_audio(url, progress_hook=None, output_path=None):
+        # Usa pasta personalizada ou padrão
+        if output_path is None:
+            path = get_download_path("audio")
+        else:
+            path = output_path
+
+        # Garante que o diretório existe
+        os.makedirs(path, exist_ok=True)
 
         ydl_opts = {
             'outtmpl': f'{path}/%(title)s.%(ext)s',
-            'format': 'bestaudio',
+            'format': 'bestaudio[ext=m4a]/bestaudio/best',
             'progress_hooks': [progress_hook] if progress_hook else [],
             'ffmpeg_location': get_ffmpeg_path(),
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
+                'preferredcodec': 'mp3',  # Converte para MP3 (mais compatível)
                 'preferredquality': '192',
             }],
         }

@@ -7,11 +7,12 @@ class DownloadWorker(QThread):
     finished = Signal(str)
     error = Signal(str)
 
-    def __init__(self, url, mode, quality=None):
+    def __init__(self, url, mode, quality=None, output_path=None):
         super().__init__()
         self.url = url
         self.mode = mode  # "video" ou "audio"
         self.quality = quality  # qualidade selecionada
+        self.output_path = output_path  # 🔥 NOVO: pasta personalizada
 
     def run(self):
         try:
@@ -26,10 +27,19 @@ class DownloadWorker(QThread):
 
             # Download baseado no modo
             if self.mode == "video":
-                Downloader.download_video(self.url, self.quality, progress_hook)
+                Downloader.download_video(
+                    self.url,
+                    self.quality,
+                    progress_hook,
+                    self.output_path  # 🔥 PASSA A PASTA PERSONALIZADA
+                )
                 self.finished.emit("Vídeo descarregado com sucesso!")
             else:
-                Downloader.download_audio(self.url, progress_hook)
+                Downloader.download_audio(
+                    self.url,
+                    progress_hook,
+                    self.output_path  # 🔥 PASSA A PASTA PERSONALIZADA
+                )
                 self.finished.emit("Áudio descarregado com sucesso!")
 
         except Exception as e:
@@ -44,5 +54,7 @@ class DownloadWorker(QThread):
                 self.error.emit("Este vídeo possui restrição de idade e requer autenticação.")
             elif "HTTP Error 403" in msg:
                 self.error.emit("Acesso negado ao vídeo. Pode estar bloqueado na sua região.")
+            elif "Requested format" in msg and "not available" in msg:
+                self.error.emit("A qualidade solicitada não está disponível para este vídeo. Tente outra qualidade ou use 'Auto'.")
             else:
                 self.error.emit(f"Erro ao processar o download:\n{msg}")
