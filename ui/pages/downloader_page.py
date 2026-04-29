@@ -10,7 +10,6 @@ from ui.download_worker import DownloadWorker
 from core.downloader import Downloader
 
 import requests
-from io import BytesIO
 
 
 class DownloaderPage(QWidget):
@@ -57,12 +56,7 @@ class DownloaderPage(QWidget):
 
         self.quality_label = QLabel("Qualidade:")
         self.quality_box = QComboBox()
-        self.quality_box.addItems([
-            "Melhor qualidade automática",
-            "1080p",
-            "720p",
-            "480p"
-        ])
+        self.quality_box.addItem("Auto")
 
         quality_layout.addWidget(self.quality_label)
         quality_layout.addWidget(self.quality_box)
@@ -88,7 +82,7 @@ class DownloaderPage(QWidget):
         main_layout.addWidget(self.url_input)
         main_layout.addWidget(self.preview_btn)
         main_layout.addWidget(self.video_info_label)
-        main_layout.addWidget(self.thumbnail_label)  # 🔥 IMPORTANTE
+        main_layout.addWidget(self.thumbnail_label)
         main_layout.addLayout(format_layout)
         main_layout.addLayout(quality_layout)
         main_layout.addLayout(path_layout)
@@ -121,19 +115,24 @@ class DownloaderPage(QWidget):
                 f"⏱ {minutes} min"
             )
 
-            # 🔥 CARREGAR THUMBNAIL
-            thumbnail_url = info.get("thumbnail")
-
-            if thumbnail_url:
-                response = requests.get(thumbnail_url, timeout=5)
+            # Thumbnail
+            if info.get("thumbnail"):
+                response = requests.get(info["thumbnail"], timeout=5)
                 image = QPixmap()
                 image.loadFromData(response.content)
 
                 self.thumbnail_label.setPixmap(
                     image.scaled(320, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 )
+
+            # Qualidades reais
+            self.quality_box.clear()
+
+            if info.get("qualities"):
+                self.quality_box.addItem("Auto")
+                self.quality_box.addItems(info["qualities"])
             else:
-                self.thumbnail_label.clear()
+                self.quality_box.addItem("Auto")
 
         except Exception as e:
             QMessageBox.critical(self, "Erro", str(e))
@@ -174,7 +173,14 @@ class DownloaderPage(QWidget):
         self.download_btn.setEnabled(False)
         self.progress.setValue(0)
 
-        self.worker = DownloadWorker(url, self.mode)
+        # Captura qualidade
+        selected_quality = self.quality_box.currentText()
+
+        if selected_quality == "Auto":
+            selected_quality = None
+
+        # Inicializa worker
+        self.worker = DownloadWorker(url, self.mode, selected_quality)
 
         self.worker.progress.connect(self.progress.setValue)
         self.worker.finished.connect(self.on_download_finished)

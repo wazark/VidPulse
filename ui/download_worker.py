@@ -7,13 +7,15 @@ class DownloadWorker(QThread):
     finished = Signal(str)
     error = Signal(str)
 
-    def __init__(self, url, mode):
+    def __init__(self, url, mode, quality=None):
         super().__init__()
         self.url = url
         self.mode = mode  # "video" ou "audio"
+        self.quality = quality  # qualidade selecionada
 
     def run(self):
         try:
+            # Hook para progresso do download
             def progress_hook(d):
                 if d['status'] == 'downloading':
                     percent = d.get('_percent_str', '0%').replace('%', '').strip()
@@ -22,8 +24,9 @@ class DownloadWorker(QThread):
                     except:
                         pass
 
+            # Download baseado no modo
             if self.mode == "video":
-                Downloader.download_video(self.url, progress_hook)
+                Downloader.download_video(self.url, self.quality, progress_hook)
                 self.finished.emit("Vídeo descarregado com sucesso!")
             else:
                 Downloader.download_audio(self.url, progress_hook)
@@ -32,7 +35,7 @@ class DownloadWorker(QThread):
         except Exception as e:
             msg = str(e)
 
-            # 🔥 TRATAMENTO DE ERROS MAIS AMIGÁVEL
+            # Tratamento de erros amigável
             if "This video is not available" in msg:
                 self.error.emit("Este vídeo não está disponível, foi removido ou está restrito.")
             elif "Private video" in msg:
