@@ -10,13 +10,12 @@ class DownloadWorker(QThread):
     def __init__(self, url, mode, quality=None, output_path=None):
         super().__init__()
         self.url = url
-        self.mode = mode  # "video" ou "audio"
-        self.quality = quality  # qualidade selecionada
-        self.output_path = output_path  # 🔥 NOVO: pasta personalizada
+        self.mode = mode
+        self.quality = quality
+        self.output_path = output_path
 
     def run(self):
         try:
-            # Hook para progresso do download
             def progress_hook(d):
                 if d['status'] == 'downloading':
                     percent = d.get('_percent_str', '0%').replace('%', '').strip()
@@ -25,36 +24,46 @@ class DownloadWorker(QThread):
                     except:
                         pass
 
-            # Download baseado no modo
             if self.mode == "video":
                 Downloader.download_video(
                     self.url,
                     self.quality,
                     progress_hook,
-                    self.output_path  # 🔥 PASSA A PASTA PERSONALIZADA
+                    self.output_path
                 )
-                self.finished.emit("Vídeo descarregado com sucesso!")
+                self.finished.emit("✅ Vídeo descarregado com sucesso!")
             else:
                 Downloader.download_audio(
                     self.url,
                     progress_hook,
-                    self.output_path  # 🔥 PASSA A PASTA PERSONALIZADA
+                    self.output_path
                 )
-                self.finished.emit("Áudio descarregado com sucesso!")
+                self.finished.emit("✅ Áudio descarregado com sucesso!")
 
         except Exception as e:
             msg = str(e)
 
             # Tratamento de erros amigável
-            if "This video is not available" in msg:
-                self.error.emit("Este vídeo não está disponível, foi removido ou está restrito.")
+            if "not available" in msg.lower():
+                self.error.emit(
+                    "❌ Este vídeo não está disponível.\n\n"
+                    "Possíveis causas:\n"
+                    "• Vídeo privado ou removido\n"
+                    "• Restrição geográfica\n"
+                    "• Exige login (use cookies)\n\n"
+                    "💡 Dica: Tente baixar com cookies (veja a documentação)"
+                )
             elif "Private video" in msg:
-                self.error.emit("Este vídeo é privado e não pode ser descarregado.")
-            elif "Sign in to confirm your age" in msg:
-                self.error.emit("Este vídeo possui restrição de idade e requer autenticação.")
+                self.error.emit("❌ Este vídeo é privado e não pode ser descarregado.")
+            elif "age" in msg.lower() or "sign in" in msg.lower():
+                self.error.emit(
+                    "❌ Este vídeo tem restrição de idade.\n\n"
+                    "Para baixar vídeos com restrição:\n"
+                    "1. Faça login no YouTube pelo navegador\n"
+                    "2. Use uma extensão para extrair cookies\n"
+                    "3. Salve como 'cookies.txt' na pasta do app"
+                )
             elif "HTTP Error 403" in msg:
-                self.error.emit("Acesso negado ao vídeo. Pode estar bloqueado na sua região.")
-            elif "Requested format" in msg and "not available" in msg:
-                self.error.emit("A qualidade solicitada não está disponível para este vídeo. Tente outra qualidade ou use 'Auto'.")
+                self.error.emit("❌ Acesso negado ao vídeo. Pode estar bloqueado na sua região.")
             else:
-                self.error.emit(f"Erro ao processar o download:\n{msg}")
+                self.error.emit(f"❌ Erro ao processar o download:\n{msg}")
