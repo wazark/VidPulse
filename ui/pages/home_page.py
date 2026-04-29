@@ -8,20 +8,18 @@ from PySide6.QtCore import Qt
 class Card(QFrame):
     def __init__(self, title, content):
         super().__init__()
-
         self.setObjectName("card")
-
         layout = QVBoxLayout()
+        layout.setSpacing(10)
 
         title_label = QLabel(title)
-        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
-
+        title_label.setStyleSheet("font-weight: bold; font-size: 15pt;")
         content_label = QLabel(content)
         content_label.setWordWrap(True)
+        content_label.setStyleSheet("line-height: 1.4; color: #7A7E8F;")
 
         layout.addWidget(title_label)
         layout.addWidget(content_label)
-
         self.setLayout(layout)
 
 
@@ -30,19 +28,22 @@ class HomePage(QWidget):
         super().__init__()
 
         main_layout = QVBoxLayout()
+        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(30, 30, 30, 30)
 
-        # 🔥 HEADER
+        # Cabeçalho
         title = QLabel("🎬 VidPulse")
-        title.setStyleSheet("font-size: 26pt; font-weight: bold;")
-
+        title.setStyleSheet("font-size: 32pt; font-weight: bold;")
         subtitle = QLabel("Download de vídeos e áudio do YouTube de forma simples, rápida e moderna.")
-        subtitle.setStyleSheet("color: gray;")
+        subtitle.setStyleSheet("color: #7A7E8F; font-size: 12pt;")
 
         main_layout.addWidget(title)
         main_layout.addWidget(subtitle)
+        main_layout.addSpacing(20)
 
-        # 🔥 CARDS (linha 1)
+        # Cards
         cards_layout = QHBoxLayout()
+        cards_layout.setSpacing(20)
 
         features_card = Card(
             "🚀 Funcionalidades",
@@ -59,32 +60,27 @@ class HomePage(QWidget):
             "no processo de aprendizagem de desenvolvimento de software e automação."
         )
 
-        cards_layout.addWidget(features_card)
-        cards_layout.addWidget(about_card)
-
-        # 🔥 CARD versão
         version_card = Card(
             "🧪 Estado do Projeto",
-            "Versão atual: v0.3\n\n"
+            "Versão atual: v1.0\n\n"
             "Aplicação em desenvolvimento contínuo com melhorias de UI, "
             "performance e novas funcionalidades."
         )
 
-        # 🔥 FOOTER
-        footer = QLabel(
-            "© Orbytek • Diony da Silva Costa\n"
-            "Fundador da Orbytek\n"
-            "Projeto educacional para alunos da SharkCoders Aveiro"
-        )
-        footer.setStyleSheet("font-size: 10pt; color: gray;")
-        footer.setAlignment(Qt.AlignLeft)
+        cards_layout.addWidget(features_card)
+        cards_layout.addWidget(about_card)
 
-        # 🔥 BUILD FINAL
-        main_layout.addSpacing(10)
         main_layout.addLayout(cards_layout)
         main_layout.addWidget(version_card)
-
         main_layout.addStretch()
+
+        # Footer
+        footer = QLabel(
+            "© Orbytek • Diony da Silva Costa\n"
+            "Projeto educacional para alunos da SharkCoders Aveiro"
+        )
+        footer.setStyleSheet("font-size: 10pt; color: #7A7E8F;")
+        footer.setAlignment(Qt.AlignLeft)
         main_layout.addWidget(footer)
 
         self.setLayout(main_layout)
