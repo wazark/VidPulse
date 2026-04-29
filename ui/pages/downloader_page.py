@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QProgressBar,
-    QFileDialog, QComboBox, QLabel
+    QFileDialog, QComboBox, QLabel, QMessageBox
 )
 from ui.download_worker import DownloadWorker
 
@@ -12,6 +12,7 @@ class DownloaderPage(QWidget):
 
         self.mode = "video"
         self.folder_path = None
+        self.worker = None
 
         main_layout = QVBoxLayout()
 
@@ -75,6 +76,9 @@ class DownloaderPage(QWidget):
 
         self.update_button_styles()
 
+    # -----------------------------
+    # CONTROLES DE MODO
+    # -----------------------------
     def set_mode(self, mode):
         self.mode = mode
         self.update_button_styles()
@@ -87,17 +91,60 @@ class DownloaderPage(QWidget):
             self.btn_audio.setStyleSheet("background-color: #00c853; color: black;")
             self.btn_video.setStyleSheet("")
 
+    # -----------------------------
+    # PASTA
+    # -----------------------------
     def select_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Escolher pasta")
         if folder:
             self.folder_path = folder
 
+    # -----------------------------
+    # DOWNLOAD
+    # -----------------------------
     def start_download(self):
         url = self.url_input.text().strip()
 
         if not url:
+            QMessageBox.warning(self, "Aviso", "Insira um link válido.")
             return
 
+        # 🔒 Bloquear UI
+        self.download_btn.setEnabled(False)
+        self.btn_video.setEnabled(False)
+        self.btn_audio.setEnabled(False)
+
+        self.progress.setValue(0)
+
         self.worker = DownloadWorker(url, self.mode)
+
+        # 🔥 LIGAÇÃO DOS SINAIS
         self.worker.progress.connect(self.progress.setValue)
+        self.worker.finished.connect(self.on_download_finished)
+        self.worker.error.connect(self.on_download_error)
+
         self.worker.start()
+
+    # -----------------------------
+    # SUCESSO
+    # -----------------------------
+    def on_download_finished(self, message):
+        QMessageBox.information(self, "Download concluído", message)
+        self.reset_ui()
+
+    # -----------------------------
+    # ERRO
+    # -----------------------------
+    def on_download_error(self, error_message):
+        QMessageBox.critical(self, "Erro no download", error_message)
+        self.reset_ui()
+
+    # -----------------------------
+    # RESET UI
+    # -----------------------------
+    def reset_ui(self):
+        self.download_btn.setEnabled(True)
+        self.btn_video.setEnabled(True)
+        self.btn_audio.setEnabled(True)
+
+        self.progress.setValue(0)
