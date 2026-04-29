@@ -1,9 +1,9 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QProgressBar,
-    QFileDialog, QComboBox, QLabel, QMessageBox, QApplication
+    QFileDialog, QComboBox, QLabel, QMessageBox, QApplication, QMenu
 )
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import Qt, QUrl, Signal
 from PySide6.QtGui import QPixmap, QDesktopServices
 import os
 import requests
@@ -14,10 +14,12 @@ from core.config import Config
 
 
 class DownloaderPage(QWidget):
+    open_settings_signal = Signal()  # 🔥 Sinal para abrir configurações completas
+
     def __init__(self):
         super().__init__()
 
-        self.mode = "video"
+        self.mode = Config.get_default_format()  # 'video' ou 'audio'
         self.folder_path = None
         self.worker = None
         self.current_video_info = None
@@ -25,6 +27,41 @@ class DownloaderPage(QWidget):
         main_layout = QVBoxLayout()
         main_layout.setSpacing(16)
         main_layout.setContentsMargins(30, 30, 30, 30)
+
+        # Cabeçalho com título e botão de configuração
+        header_layout = QHBoxLayout()
+        title_label = QLabel("📥 Downloader")
+        title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+
+        # Botão de engrenagem com menu popup
+        self.settings_btn = QPushButton("⚙️")
+        self.settings_btn.setFixedSize(36, 36)
+        self.settings_btn.setToolTip("Configurações rápidas")
+        self.settings_menu = QMenu(self)
+        self.quality_menu = self.settings_menu.addMenu("Qualidade padrão")
+        self.format_menu = self.settings_menu.addMenu("Formato padrão")
+        self.settings_menu.addSeparator()
+        self.settings_menu.addAction("Abrir configurações completas", self.open_full_settings)
+
+        # Preenche submenu de qualidade
+        self.quality_actions = {}
+        for q in ["Auto", "2160p", "1440p", "1080p", "720p", "480p", "360p"]:
+            action = self.quality_menu.addAction(q)
+            action.triggered.connect(lambda checked, qual=q: self.set_default_quality(qual))
+            self.quality_actions[q] = action
+
+        # Preenche submenu de formato
+        self.format_actions = {}
+        for fmt, label in [("video", "🎬 MP4"), ("audio", "🎵 MP3")]:
+            action = self.format_menu.addAction(label)
+            action.triggered.connect(lambda checked, f=fmt: self.set_default_format(f))
+            self.format_actions[fmt] = action
+
+        self.settings_btn.setMenu(self.settings_menu)
+        header_layout.addWidget(self.settings_btn)
+        main_layout.addLayout(header_layout)
 
         # URL
         self.url_input = QLineEdit()
@@ -99,8 +136,43 @@ class DownloaderPage(QWidget):
         main_layout.addWidget(self.download_btn)
 
         self.setLayout(main_layout)
+
+        # Carrega configurações salvas
+        self.load_saved_settings()
         self.update_button_styles()
         self.load_default_folder()
+
+    # -----------------------------
+    # CONFIGURAÇÕES RÁPIDAS
+    # -----------------------------
+    def load_saved_settings(self):
+        default_format = Config.get_default_format()
+        self.set_mode(default_format)
+
+        self.default_quality = Config.get_default_quality()
+        for q, action in self.quality_actions.items():
+            action.setChecked(q == self.default_quality)
+
+        for fmt, action in self.format_actions.items():
+            action.setChecked(fmt == default_format)
+
+    def set_default_quality(self, quality):
+        Config.set_default_quality(quality)
+        self.default_quality = quality
+        if self.quality_box.count() > 0:
+            idx = self.quality_box.findText(quality)
+            if idx >= 0:
+                self.quality_box.setCurrentIndex(idx)
+            elif quality == "Auto":
+                self.quality_box.setCurrentIndex(0)
+
+    def set_default_format(self, fmt):
+        Config.set_default_format(fmt)
+        self.set_mode(fmt)
+
+    def open_full_settings(self):
+        """Abre a página de configurações completas."""
+        self.open_settings_signal.emit()
 
     # -----------------------------
     # PREVIEW
@@ -138,6 +210,10 @@ class DownloaderPage(QWidget):
             self.quality_box.addItem("Auto")
             if info.get("qualities"):
                 self.quality_box.addItems(info["qualities"])
+                if self.default_quality in info["qualities"]:
+                    self.quality_box.setCurrentText(self.default_quality)
+                elif self.default_quality == "Auto":
+                    self.quality_box.setCurrentIndex(0)
 
             QMessageBox.information(self, "Sucesso", f"Vídeo validado!\n\nTítulo: {info['title']}")
 
@@ -155,6 +231,7 @@ class DownloaderPage(QWidget):
         else:
             self.quality_label.setText("Qualidade do áudio:")
             self.quality_box.setCurrentText("Auto")
+        self.load_default_folder()
 
     def update_button_styles(self):
         app = QApplication.instance()
@@ -249,7 +326,6 @@ class DownloaderPage(QWidget):
             QMessageBox.warning(self, "Aviso", "Insira um link válido.")
             return
 
-        # Desabilita botões durante o download
         self.download_btn.setEnabled(False)
         self.preview_btn.setEnabled(False)
         self.cancel_btn.setEnabled(True)
@@ -271,14 +347,12 @@ class DownloaderPage(QWidget):
         self.worker.start()
 
     def cancel_download(self):
-        """Cancela o download em andamento."""
         if self.worker and self.worker.isRunning():
             self.worker.cancel()
             self.cancel_btn.setEnabled(False)
             self.eta_label.setText("Cancelando...")
 
     def on_download_finished(self, message, file_path):
-        # Reabilita botões
         self.download_btn.setEnabled(True)
         self.preview_btn.setEnabled(True)
         self.cancel_btn.setEnabled(False)

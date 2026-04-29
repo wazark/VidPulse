@@ -82,3 +82,39 @@ QComboBox QAbstractItemView {
     border: 1px solid #2A2C3E;
     selection-background-color: #6C5CE7;
 }
+
+/* 🔥 NOVO: Estilos para QTabWidget (abas das configurações) */
+QTabWidget::pane {
+    border: 1px solid #2A2C3E;
+    background-color: #12131C;
+    border-radius: 8px;
+    margin-top: -1px;
+}
+
+QTabBar::tab {
+    background-color: #1A1D25;
+    color: #E0E0E0;
+    padding: 8px 20px;
+    margin-right: 4px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border: 1px solid #2A2C3E;
+    border-bottom: none;
+}
+
+QTabBar::tab:selected {
+    background-color: #12131C;
+    color: #00C853;
+    border-bottom: 2px solid #00C853;
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #2A2F3A;
+    color: #FFFFFF;
+}
+
+/* Scroll areas (se necessário) */
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}

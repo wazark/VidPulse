@@ -66,6 +66,9 @@ class MainWindow(QWidget):
         self.stack.addWidget(self.downloader_page)
         self.stack.addWidget(self.settings_page)
 
+        # 🔥 Conecta o botão de configuração rápida do downloader à página de configurações
+        self.downloader_page.open_settings_signal.connect(lambda: self.stack.setCurrentIndex(2))
+
         btn_home.clicked.connect(lambda: self.stack.setCurrentIndex(0))
         btn_download.clicked.connect(lambda: self.stack.setCurrentIndex(1))
         btn_settings.clicked.connect(lambda: self.stack.setCurrentIndex(2))
@@ -87,5 +90,4 @@ class MainWindow(QWidget):
     def change_theme(self, theme):
         from PySide6.QtWidgets import QApplication
         ThemeManager.load_theme(QApplication.instance(), theme)
-        # 🔥 Atualiza os estilos dos botões na página de download
         self.downloader_page.refresh_theme()

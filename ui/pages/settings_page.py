@@ -1,12 +1,13 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QComboBox,
-    QPushButton, QFileDialog, QMessageBox, QHBoxLayout
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
+    QPushButton, QFileDialog, QMessageBox, QTabWidget,
+    QCheckBox, QSpinBox
 )
 from PySide6.QtCore import Qt
 import shutil
 import os
 
-from core.config import Config  # 🔥 Gestão de configurações
+from core.config import Config
 
 
 class SettingsPage(QWidget):
@@ -15,94 +16,141 @@ class SettingsPage(QWidget):
         self.theme_callback = theme_callback
 
         layout = QVBoxLayout()
-        layout.setSpacing(15)
+        self.tabs = QTabWidget()
 
-        # ---------- TEMA ----------
-        layout.addWidget(QLabel("🎨 Tema da aplicação:"))
+        # -------------------- ABA APARÊNCIA --------------------
+        tab_appearance = QWidget()
+        appearance_layout = QVBoxLayout()
+        appearance_layout.setSpacing(15)
+
+        appearance_layout.addWidget(QLabel("🎨 Tema da aplicação:"))
         self.theme_box = QComboBox()
         self.theme_box.addItems(["Dark", "Light"])
-        layout.addWidget(self.theme_box)
+        appearance_layout.addWidget(self.theme_box)
 
         apply_btn = QPushButton("✨ Aplicar tema")
         apply_btn.clicked.connect(self.save_and_apply_theme)
-        layout.addWidget(apply_btn)
+        appearance_layout.addWidget(apply_btn)
 
-        layout.addWidget(QLabel(""))
+        appearance_layout.addStretch()
+        tab_appearance.setLayout(appearance_layout)
+        self.tabs.addTab(tab_appearance, "Aparência")
 
-        # ---------- PASTAS PADRÃO ----------
-        layout.addWidget(QLabel("📁 Pastas padrão:"))
+        # -------------------- ABA DOWNLOADS --------------------
+        tab_downloads = QWidget()
+        downloads_layout = QVBoxLayout()
+        downloads_layout.setSpacing(15)
 
-        # Pasta para vídeos
-        video_folder_layout = QHBoxLayout()
-        video_folder_layout.addWidget(QLabel("Vídeos:"))
+        downloads_layout.addWidget(QLabel("📁 Pastas padrão:"))
+        # Pasta vídeos
+        vid_layout = QHBoxLayout()
+        vid_layout.addWidget(QLabel("Vídeos:"))
         self.video_folder_display = QLabel(Config.get_default_video_folder())
         self.video_folder_display.setStyleSheet("color: #7A7E8F;")
-        video_folder_btn = QPushButton("Alterar")
-        video_folder_btn.clicked.connect(lambda: self.change_default_folder("video"))
-        video_folder_layout.addWidget(self.video_folder_display)
-        video_folder_layout.addWidget(video_folder_btn)
-        layout.addLayout(video_folder_layout)
+        vid_btn = QPushButton("Alterar")
+        vid_btn.clicked.connect(lambda: self.change_default_folder("video"))
+        vid_layout.addWidget(self.video_folder_display)
+        vid_layout.addWidget(vid_btn)
+        downloads_layout.addLayout(vid_layout)
 
-        # Pasta para áudio
-        audio_folder_layout = QHBoxLayout()
-        audio_folder_layout.addWidget(QLabel("Áudio:"))
+        # Pasta áudio
+        aud_layout = QHBoxLayout()
+        aud_layout.addWidget(QLabel("Áudio:"))
         self.audio_folder_display = QLabel(Config.get_default_audio_folder())
         self.audio_folder_display.setStyleSheet("color: #7A7E8F;")
-        audio_folder_btn = QPushButton("Alterar")
-        audio_folder_btn.clicked.connect(lambda: self.change_default_folder("audio"))
-        audio_folder_layout.addWidget(self.audio_folder_display)
-        audio_folder_layout.addWidget(audio_folder_btn)
-        layout.addLayout(audio_folder_layout)
+        aud_btn = QPushButton("Alterar")
+        aud_btn.clicked.connect(lambda: self.change_default_folder("audio"))
+        aud_layout.addWidget(self.audio_folder_display)
+        aud_layout.addWidget(aud_btn)
+        downloads_layout.addLayout(aud_layout)
 
-        layout.addWidget(QLabel(""))
+        downloads_layout.addWidget(QLabel(""))
+        downloads_layout.addWidget(QLabel("⚙️ Qualidade padrão:"))
+        self.default_quality_combo = QComboBox()
+        self.default_quality_combo.addItems(["Auto", "2160p", "1440p", "1080p", "720p", "480p", "360p"])
+        self.default_quality_combo.setCurrentText(Config.get_default_quality())
+        self.default_quality_combo.currentTextChanged.connect(Config.set_default_quality)
+        downloads_layout.addWidget(self.default_quality_combo)
 
-        # ---------- IDIOMA ----------
-        layout.addWidget(QLabel("🌐 Idioma:"))
-        self.lang_box = QComboBox()
-        self.lang_box.addItems(["Português", "English", "Español", "Deutsch", "Français"])
-        self.lang_box.setCurrentText(Config.get_language())  # carrega salvo
-        self.lang_box.currentTextChanged.connect(self.save_language)
-        layout.addWidget(self.lang_box)
+        downloads_layout.addWidget(QLabel("🎬 Formato padrão:"))
+        self.default_format_combo = QComboBox()
+        self.default_format_combo.addItems(["MP4 (Vídeo)", "MP3 (Áudio)"])
+        current_fmt = Config.get_default_format()
+        self.default_format_combo.setCurrentIndex(0 if current_fmt == "video" else 1)
+        self.default_format_combo.currentIndexChanged.connect(self.on_default_format_changed)
+        downloads_layout.addWidget(self.default_format_combo)
 
-        layout.addWidget(QLabel(""))
+        downloads_layout.addWidget(QLabel("📥 Downloads simultâneos (em breve):"))
+        self.concurrent_spin = QSpinBox()
+        self.concurrent_spin.setRange(1, 5)
+        self.concurrent_spin.setValue(Config.get_max_concurrent_downloads())
+        self.concurrent_spin.valueChanged.connect(Config.set_max_concurrent_downloads)
+        downloads_layout.addWidget(self.concurrent_spin)
 
-        # ---------- COOKIES ----------
-        layout.addWidget(QLabel("🍪 Cookies (para vídeos restritos/idade):"))
-        cookie_layout = QVBoxLayout()
+        downloads_layout.addStretch()
+        tab_downloads.setLayout(downloads_layout)
+        self.tabs.addTab(tab_downloads, "Downloads")
+
+        # -------------------- ABA REDE --------------------
+        tab_network = QWidget()
+        network_layout = QVBoxLayout()
+        network_layout.setSpacing(15)
+
+        network_layout.addWidget(QLabel("🍪 Cookies (para vídeos restritos/idade):"))
         self.cookie_status = QLabel("📄 Status: Nenhum arquivo de cookies carregado")
         self.cookie_status.setStyleSheet("color: #ff9800; font-size: 10pt;")
         cookie_btn = QPushButton("📁 Carregar arquivo cookies.txt")
         cookie_btn.clicked.connect(self.load_cookies)
         remove_cookie_btn = QPushButton("🗑️ Remover cookies")
         remove_cookie_btn.clicked.connect(self.remove_cookies)
-        cookie_layout.addWidget(self.cookie_status)
-        cookie_layout.addWidget(cookie_btn)
-        cookie_layout.addWidget(remove_cookie_btn)
-        layout.addLayout(cookie_layout)
-
-        layout.addWidget(QLabel(""))
+        network_layout.addWidget(self.cookie_status)
+        network_layout.addWidget(cookie_btn)
+        network_layout.addWidget(remove_cookie_btn)
+        network_layout.addWidget(QLabel(""))
         help_cookies_btn = QPushButton("ℹ️ Como obter cookies.txt")
         help_cookies_btn.clicked.connect(self.show_cookie_help)
-        layout.addWidget(help_cookies_btn)
+        network_layout.addWidget(help_cookies_btn)
 
-        layout.addWidget(QLabel(""))
+        network_layout.addStretch()
+        tab_network.setLayout(network_layout)
+        self.tabs.addTab(tab_network, "Rede")
 
-        # ---------- AJUDA GERAL ----------
+        # -------------------- ABA SISTEMA --------------------
+        tab_system = QWidget()
+        system_layout = QVBoxLayout()
+        system_layout.setSpacing(15)
+
+        system_layout.addWidget(QLabel("🌐 Idioma:"))
+        self.lang_box = QComboBox()
+        self.lang_box.addItems(["Português", "English", "Español", "Deutsch", "Français"])
+        self.lang_box.setCurrentText(Config.get_language())
+        self.lang_box.currentTextChanged.connect(Config.set_language)
+        system_layout.addWidget(self.lang_box)
+
+        system_layout.addWidget(QLabel(""))
+        self.check_updates_cb = QCheckBox("Verificar atualizações ao iniciar")
+        self.check_updates_cb.setChecked(Config.get_check_updates())
+        self.check_updates_cb.toggled.connect(Config.set_check_updates)
+        system_layout.addWidget(self.check_updates_cb)
+
+        system_layout.addStretch()
+        tab_system.setLayout(system_layout)
+        self.tabs.addTab(tab_system, "Sistema")
+
+        # Botão de ajuda geral (fora das tabs)
         help_btn = QPushButton("❓ Ajuda geral")
         help_btn.clicked.connect(self.show_help)
-        layout.addWidget(help_btn)
 
-        layout.addStretch()
+        layout.addWidget(self.tabs)
+        layout.addWidget(help_btn)
         self.setLayout(layout)
 
-        # Carrega estado atual dos cookies
+        # Inicializa estados
         self.check_cookie_status()
-        # Carrega o tema salvo no combo box
         self.load_saved_theme()
 
     # ---------- Tema ----------
     def load_saved_theme(self):
-        """Sincroniza o combo box com o tema salvo."""
         saved_theme = Config.get_theme()
         index = 0 if saved_theme == "dark" else 1
         self.theme_box.setCurrentIndex(index)
@@ -124,10 +172,10 @@ class SettingsPage(QWidget):
                 self.audio_folder_display.setText(folder)
             QMessageBox.information(self, "Sucesso", f"Pasta padrão para {media_type} atualizada.")
 
-    # ---------- Idioma ----------
-    def save_language(self, lang):
-        Config.set_language(lang)
-        # Aqui futuramente pode-se aplicar traduções dinâmicas
+    # ---------- Formato padrão ----------
+    def on_default_format_changed(self, index):
+        fmt = "video" if index == 0 else "audio"
+        Config.set_default_format(fmt)
 
     # ---------- Cookies ----------
     def check_cookie_status(self):
@@ -184,5 +232,5 @@ class SettingsPage(QWidget):
             "5. Escolha a pasta\n"
             "6. Clique em Download\n\n"
             "🍪 **Vídeos com restrição:** use cookies.\n"
-            "⚙️ **Configurações:** tema e pastas padrão são salvos automaticamente."
+            "⚙️ **Configurações:** tema, pastas e formatos padrão são salvos automaticamente."
         )
