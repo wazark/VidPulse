@@ -18,7 +18,7 @@ class MainWindow(QWidget):
         super().__init__()
 
         self.setWindowTitle("VidPulse — Download de Vídeo e Áudio")
-        self.resize(900, 500)
+        self.resize(1100, 600)
 
         # 🔥 ÍCONE CORRIGIDO
         icon_path = os.path.join(self.get_base_path(), "assets", "icon.png")

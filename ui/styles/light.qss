@@ -5,6 +5,7 @@ QWidget {
     font-size: 11pt;
 }
 
+/* 🔘 BOTÕES */
 QPushButton {
     background-color: #ffffff;
     border: 1px solid #ccc;
@@ -14,15 +15,55 @@ QPushButton {
 
 QPushButton:hover {
     background-color: #eaeaea;
+    border: 1px solid #999;
 }
 
+QPushButton:pressed {
+    background-color: #0078d7;
+    color: white;
+}
+
+/* 🔤 INPUT */
 QLineEdit {
-    background-color: #fff;
+    background-color: #ffffff;
     border: 1px solid #ccc;
     padding: 8px;
     border-radius: 6px;
 }
 
+QLineEdit:focus {
+    border: 1px solid #0078d7;
+}
+
+/* 📦 CARDS */
+QFrame#card {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid #ddd;
+}
+
+/* 📊 PROGRESS BAR */
+QProgressBar {
+    background: #e0e0e0;
+    border-radius: 6px;
+    height: 10px;
+    text-align: center;
+}
+
 QProgressBar::chunk {
     background-color: #0078d7;
+    border-radius: 6px;
+}
+
+/* 📋 COMBOBOX */
+QComboBox {
+    background-color: #ffffff;
+    border: 1px solid #ccc;
+    padding: 6px;
+    border-radius: 6px;
+}
+
+QComboBox:hover {
+    border: 1px solid #0078d7;
 }

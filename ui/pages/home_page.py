@@ -1,45 +1,90 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QFrame
+)
 from PySide6.QtCore import Qt
+
+
+class Card(QFrame):
+    def __init__(self, title, content):
+        super().__init__()
+
+        self.setObjectName("card")
+
+        layout = QVBoxLayout()
+
+        title_label = QLabel(title)
+        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+
+        content_label = QLabel(content)
+        content_label.setWordWrap(True)
+
+        layout.addWidget(title_label)
+        layout.addWidget(content_label)
+
+        self.setLayout(layout)
 
 
 class HomePage(QWidget):
     def __init__(self):
         super().__init__()
 
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout()
 
+        # 🔥 HEADER
         title = QLabel("🎬 VidPulse")
-        title.setStyleSheet("font-size: 24pt; font-weight: bold;")
-        layout.addWidget(title)
+        title.setStyleSheet("font-size: 26pt; font-weight: bold;")
 
-        desc = QLabel("Download de vídeos e áudio do YouTube de forma simples e rápida.")
-        layout.addWidget(desc)
+        subtitle = QLabel("Download de vídeos e áudio do YouTube de forma simples, rápida e moderna.")
+        subtitle.setStyleSheet("color: gray;")
 
-        version = QLabel("Versão: v0.3")
-        layout.addWidget(version)
+        main_layout.addWidget(title)
+        main_layout.addWidget(subtitle)
 
-        features = QLabel(
-            "Features:\n"
-            "- Download MP4\n"
-            "- Download MP3\n"
-            "- Escolha de qualidade\n"
-            "- Tema Dark/Light"
+        # 🔥 CARDS (linha 1)
+        cards_layout = QHBoxLayout()
+
+        features_card = Card(
+            "🚀 Funcionalidades",
+            "• Download de vídeos em MP4\n"
+            "• Conversão para MP3\n"
+            "• Escolha de qualidade\n"
+            "• Interface moderna\n"
+            "• Tema Dark e Light"
         )
-        layout.addWidget(features)
 
-        # 🔥 Espaço que empurra o footer para baixo
-        layout.addStretch()
+        about_card = Card(
+            "📚 Sobre o Projeto",
+            "VidPulse é uma ferramenta educacional criada para auxiliar alunos "
+            "no processo de aprendizagem de desenvolvimento de software e automação."
+        )
 
+        cards_layout.addWidget(features_card)
+        cards_layout.addWidget(about_card)
+
+        # 🔥 CARD versão
+        version_card = Card(
+            "🧪 Estado do Projeto",
+            "Versão atual: v0.3\n\n"
+            "Aplicação em desenvolvimento contínuo com melhorias de UI, "
+            "performance e novas funcionalidades."
+        )
+
+        # 🔥 FOOTER
         footer = QLabel(
-            "© Orbytek\n"
-            "Desenvolvido por Diony da Silva Costa\n"
-            "Fundador da Orbytek\n\n"
-            "Projeto educacional criado para apoiar\n"
-            "os alunos da SharkCoders Aveiro."
+            "© Orbytek • Diony da Silva Costa\n"
+            "Fundador da Orbytek\n"
+            "Projeto educacional para alunos da SharkCoders Aveiro"
         )
         footer.setStyleSheet("font-size: 10pt; color: gray;")
         footer.setAlignment(Qt.AlignLeft)
 
-        layout.addWidget(footer)
+        # 🔥 BUILD FINAL
+        main_layout.addSpacing(10)
+        main_layout.addLayout(cards_layout)
+        main_layout.addWidget(version_card)
 
-        self.setLayout(layout)
+        main_layout.addStretch()
+        main_layout.addWidget(footer)
+
+        self.setLayout(main_layout)

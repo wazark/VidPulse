@@ -5,17 +5,25 @@ QWidget {
     font-size: 11pt;
 }
 
+/* 🔘 BOTÕES */
 QPushButton {
     background-color: #1a1d25;
     border-radius: 8px;
     padding: 10px;
-    border: none;
+    border: 1px solid transparent;
 }
 
 QPushButton:hover {
     background-color: #2a2f3a;
+    border: 1px solid #3a3f4a;
 }
 
+QPushButton:pressed {
+    background-color: #00c853;
+    color: black;
+}
+
+/* 🔤 INPUT */
 QLineEdit {
     background-color: #1a1d25;
     border: 1px solid #2a2f3a;
@@ -23,13 +31,39 @@ QLineEdit {
     border-radius: 6px;
 }
 
+QLineEdit:focus {
+    border: 1px solid #00c853;
+}
+
+/* 📦 CARDS */
+QFrame#card {
+    background-color: #1a1d25;
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid #2a2f3a;
+}
+
+/* 📊 PROGRESS BAR */
 QProgressBar {
     background: #1a1d25;
     border-radius: 6px;
     height: 10px;
+    text-align: center;
 }
 
 QProgressBar::chunk {
     background-color: #00c853;
     border-radius: 6px;
+}
+
+/* 📋 COMBOBOX */
+QComboBox {
+    background-color: #1a1d25;
+    border: 1px solid #2a2f3a;
+    padding: 6px;
+    border-radius: 6px;
+}
+
+QComboBox:hover {
+    border: 1px solid #00c853;
 }
