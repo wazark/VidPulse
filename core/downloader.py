@@ -1,5 +1,17 @@
 import yt_dlp
+import os
+import sys
 from core.utils import get_download_path
+
+
+def get_ffmpeg_path():
+    if hasattr(sys, '_MEIPASS'):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.dirname(os.path.dirname(__file__))
+
+    return os.path.join(base_path, "ffmpeg")
+
 
 class Downloader:
 
@@ -9,8 +21,11 @@ class Downloader:
 
         ydl_opts = {
             'outtmpl': f'{path}/%(title)s.%(ext)s',
-            'format': 'mp4',
-            'progress_hooks': [progress_hook] if progress_hook else []
+            'format': 'bestvideo+bestaudio/best',
+            'merge_output_format': 'mp4',
+            'progress_hooks': [progress_hook] if progress_hook else [],
+            'ffmpeg_location': get_ffmpeg_path(),
+
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -22,8 +37,9 @@ class Downloader:
 
         ydl_opts = {
             'outtmpl': f'{path}/%(title)s.%(ext)s',
-            'format': 'bestaudio/best',
+            'format': 'bestaudio',
             'progress_hooks': [progress_hook] if progress_hook else [],
+            'ffmpeg_location': get_ffmpeg_path(),
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
@@ -33,3 +49,4 @@ class Downloader:
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
+
