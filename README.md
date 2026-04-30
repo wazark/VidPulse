@@ -72,7 +72,7 @@ VidPulse/
 
 1. **Clone o repositório**
    ```bash
-   git clone https://github.com/SEU_USER/VidPulse.git
+   git clone https://github.com/wazark/VidPulse.git
    cd VidPulse
     ```
 
