@@ -21,9 +21,13 @@ class MainWindow(QWidget):
         self.setWindowTitle("VidPulse — Download de Vídeo e Áudio")
         self.resize(1100, 660)
 
-        icon_path = os.path.join(self.get_base_path(), "assets", "icon.png")
-        if os.path.exists(icon_path):
+        # Carregar ícone da janela (tenta .png e .ico)
+        icon_path = self.get_icon_path()
+        if icon_path and os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
+        else:
+            # Se não encontrar, tenta apenas definir um ícone vazio (evita o ícone padrão do Qt)
+            self.setWindowIcon(QIcon())
 
         main_layout = QHBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -35,9 +39,9 @@ class MainWindow(QWidget):
         sidebar.setSpacing(16)
 
         # Logo
-        logo_path = os.path.join(self.get_base_path(), "assets", "VidPulse.png")
+        logo_path = self.get_logo_path()
         logo_label = QLabel()
-        if os.path.exists(logo_path):
+        if logo_path and os.path.exists(logo_path):
             logo_pixmap = QPixmap(logo_path)
             logo_pixmap = logo_pixmap.scaledToWidth(150, Qt.SmoothTransformation)
             logo_label.setPixmap(logo_pixmap)
@@ -66,7 +70,7 @@ class MainWindow(QWidget):
         self.stack.addWidget(self.downloader_page)
         self.stack.addWidget(self.settings_page)
 
-        # 🔥 Conecta o botão de configuração rápida do downloader à página de configurações
+        # Conecta o sinal do downloader para abrir configurações
         self.downloader_page.open_settings_signal.connect(lambda: self.stack.setCurrentIndex(2))
 
         btn_home.clicked.connect(lambda: self.stack.setCurrentIndex(0))
@@ -83,9 +87,32 @@ class MainWindow(QWidget):
         self.setLayout(main_layout)
 
     def get_base_path(self):
+        """Retorna o caminho base do projecto (raiz)."""
         if hasattr(sys, '_MEIPASS'):
             return sys._MEIPASS
         return os.path.dirname(os.path.dirname(__file__))
+
+    def get_icon_path(self):
+        """Tenta encontrar o ícone da janela (icon.png ou icon.ico)."""
+        base = self.get_base_path()
+        candidates = [
+            os.path.join(base, "assets", "icon.png"),
+            os.path.join(base, "assets", "icon.ico"),
+            os.path.join(base, "assets", "Icon.png"),
+            os.path.join(base, "assets", "Icon.ico"),
+        ]
+        for cand in candidates:
+            if os.path.exists(cand):
+                return cand
+        return None
+
+    def get_logo_path(self):
+        """Retorna o caminho para o logótipo VidPulse.png."""
+        base = self.get_base_path()
+        logo = os.path.join(base, "assets", "VidPulse.png")
+        if os.path.exists(logo):
+            return logo
+        return None
 
     def change_theme(self, theme):
         from PySide6.QtWidgets import QApplication
